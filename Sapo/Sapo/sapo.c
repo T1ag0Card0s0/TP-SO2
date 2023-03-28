@@ -3,6 +3,23 @@
 #include <io.h>
 #include <fcntl.h>
 #include <stdio.h>
+int CheckNumberOfInstances(HANDLE hSemaphore) {
+    if (hSemaphore == NULL) {
+        _tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
+        return 0;
+    }
+    DWORD res = WaitForSingleObject(hSemaphore, 0); // tenta obter acesso ao semáforo
+    if (res == WAIT_FAILED) {
+        _tprintf(_T("Erro ao esperar pelo semáforo. Código do erro: %d\n"), GetLastError());
+        return 0;
+    }
+    else if (res == WAIT_TIMEOUT) { // se o semáforo não estiver disponível
+        _tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrando...\n"));
+        CloseHandle(hSemaphore);
+        return 0;
+    }
+    return 1;
+}
 
 int _tmain(int argc, TCHAR* argv[]) {
     TCHAR STR[5];
@@ -12,19 +29,10 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
-    if (hSemaphore == NULL){
-        _tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
+    if (!CheckNumberOfInstances(hSemaphore)) {
         return 1;
     }
-    DWORD res = WaitForSingleObject(hSemaphore, 0); // tenta obter acesso ao semáforo
-    if (res == WAIT_FAILED) {
-        _tprintf(_T("Erro ao esperar pelo semáforo. Código do erro: %d\n"), GetLastError());
-        return 2;
-    }else if (res == WAIT_TIMEOUT){ // se o semáforo não estiver disponível
-        _tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrando...\n"));
-        CloseHandle(hSemaphore);
-        return 3;
-    }
+
     // aqui vai o código do programa
     //isto é so para testar
     _tprintf(_T("Instância permitida!\n"));
