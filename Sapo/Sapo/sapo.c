@@ -4,6 +4,10 @@
 #include <fcntl.h>
 #include <stdio.h>
 int CheckNumberOfInstances(HANDLE hSemaphore) {
+    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+        _tprintf(_T("O servidor ainda nao esta a correr\n"));
+        return 0;
+    }
     if (hSemaphore == NULL) {
         _tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
         return 0;

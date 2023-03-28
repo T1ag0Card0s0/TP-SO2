@@ -1,4 +1,2 @@
 ﻿  servidor.c
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(26,52): warning C4047: 'função': 'const wchar_t *' difere em níveis de indireção de 'DWORD'
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(26,21): warning C4024: 'wcscmp': tipos diferentes para parâmetro formal e real 1
   Servidor.vcxproj -> C:\SO2\TP-SO2\Servidor\x64\Debug\Servidor.exe
