@@ -5,8 +5,7 @@
 #include <stdio.h>
 
 DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
-    // Abrir o evento
-    
+
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
     if (hEvent == NULL)
     {
@@ -16,6 +15,7 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 
     // Esperar pelo evento
     WaitForSingleObject(hEvent, INFINITE);
+    _tprintf(_T("Desconectado...\n"));
     // Server saiu entao sai
     CloseHandle(hEvent);
     ExitProcess(0);
@@ -36,7 +36,7 @@ int _tmain(int argc, TCHAR* argv[]) {
 
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
-   
+
     while (1) {
         _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
         _tscanf_s(_T("%s"), STR, 5);

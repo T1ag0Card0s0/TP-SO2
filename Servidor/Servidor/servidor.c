@@ -3,10 +3,63 @@
 #include <io.h>
 #include <fcntl.h>
 #include <stdio.h>
+#define TAM 200
+
+typedef struct keyDados {
+    DWORD dwType;
+    DWORD dwValue;
+    DWORD dwEstado;
+    DWORD dwSize;
+    HANDLE hkey;
+}keyDados;
+
+typedef struct InitialValues {
+    TCHAR velocidade[TAM];
+    TCHAR faixas[TAM];
+}InitialValues;
+
+DWORD WINAPI cmdThread(LPVOID lparam) {
+    TCHAR cmd[TAM];
+    TCHAR linha[TAM];
+    keyDados* p = (keyDados*)lparam;
+    TCHAR value[TAM];
+    TCHAR value2[TAM];
+
+    do {
+        _tprintf(_T("\nOperation\n->"));
+        _fgetts(linha, TAM, stdin);
+        _stscanf_s(linha, _T("%s %s\n"), cmd, TAM, value, TAM); //falta verificações de comandos
+
+        if (!(_tcscmp(cmd, _T("setv")))) { // COMANDO "SETV .." MUDA VALOR DE VELOCIDADE
+
+            if (RegSetValueEx(p->hkey, _T("Faixas"), 0, REG_SZ, (LPCBYTE)&value, sizeof(TCHAR) * (_tcslen(value) + 1)) != ERROR_SUCCESS)
+                _tprintf(TEXT("O atributo nao foi alterado nem criado! ERRO!\n"));
+            else
+                _tprintf(TEXT("Velocidade = %s\n"), value);
+        }
+        else if (!(_tcscmp(cmd, _T("setf")))) { // COMANDO "SETF .." MUDA VALOR DE FAIXAS
+            if (RegSetValueEx(p->hkey, _T("Velocidade"), 0, REG_SZ, (LPCBYTE)&value, sizeof(TCHAR) * (_tcslen(value) + 1)) != ERROR_SUCCESS)
+                _tprintf(TEXT("O atributo nao foi alterado nem criado! ERRO!\n"));
+            else
+                _tprintf(TEXT("Faixas = %s\n"), value);
+        }
+
+        fflush(stdin);
+        fflush(stdout);
+    } while ((_tcscmp(cmd, _T("exit"))));
+
+    RegCloseKey(p->hkey);
+    ExitThread(0);
+}
 
 int _tmain(int argc, TCHAR* argv[]) {
     HANDLE hMutex;
+    HANDLE hEvent; // handle para o evento de quando o servidor fecha
+    HANDLE hCmdTh; // handle para a thread que trata dos comandos
     TCHAR STR[5];
+    keyDados key; // struct para valores da key (estado, value ,...)
+    InitialValues initValues; // struct para guardar valores iniciais (velocidade, numero faixas) PROVISORIO
+    TCHAR chave_dir[TAM] = TEXT("Software\\TP-SO2\\");
 
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
@@ -14,35 +67,56 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
 
-    hMutex = CreateMutex(NULL, TRUE, _T("Servidor"));
-
-    // Criar o evento
-    HANDLE hEvent = CreateEvent(NULL, TRUE, FALSE, "ExitServer");
-    if (hEvent == NULL)
-    {
-        // Tratar erro ao criar o evento
-        return 1;
-    }
-
     if (GetLastError() == ERROR_ALREADY_EXISTS)
     {
-        _tprintf(_T("Ja existe um servidor a correr"));
+        _tprintf(_T("Ja existe um servidor a correr\n"));
         //Apenas um servidor pode existir
         ExitProcess(0);
     }
 
-    //Este ciclo apenas serviu para verificar se funciona ou nao a validaçao de instancias
-    while (1) {
-        _tprintf(_T("SERVIDOR\n\nEscreve quit para sair\n"));
-        _tscanf_s(_T("%s"), STR,5);
-        if (_tcscmp(STR,_T("QUIT")) == 0|| _tcscmp(STR, _T("quit")) == 0) break;
+    _tprintf(_T("SERVIDOR\n"));
+
+    // cria a chave e verifca os erros
+    if (RegCreateKeyEx(HKEY_CURRENT_USER, chave_dir, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &(key.hkey), &(key.dwEstado)) != ERROR_SUCCESS) {
+        _tprintf(TEXT("Chave nao foi nem criada nem aberta! ERRO!"));
+        ExitProcess(1);
+    }
+    else { // se criou a chave vai verificar se já ha dados de velocidade e numero de faixas
+        initValues.velocidade[0] = '\0';
+        initValues.faixas[0] = '\0';
+        DWORD tamanho = sizeof(initValues.velocidade);
+        // se houver dados já guardados mostra
+        if (RegQueryValueEx(key.hkey, _T("Velocidade"), 0, NULL, (LPBYTE)initValues.velocidade, &tamanho) == ERROR_SUCCESS) {
+            _tprintf(TEXT("\nAtributo Velocidade com o valor : %s\n"), initValues.velocidade);
+        }
+
+        if (RegQueryValueEx(key.hkey, _T("Faixas"), 0, NULL, (LPBYTE)initValues.faixas, &tamanho) == ERROR_SUCCESS) {
+            _tprintf(TEXT("\nAtributo Faixas com o valor : %s\n"), initValues.faixas);
+        }
     }
 
+    hMutex = CreateMutex(NULL, TRUE, _T("Servidor"));
+
+    // Criar o evento para fechar os outros processos
+    hEvent = CreateEvent(NULL, TRUE, FALSE, "ExitServer");
+
+    if (hEvent == NULL)
+    {
+        _tprintf(_T("ERRO AO CRIAR EVENTO\n\n"));
+        ExitProcess(1);
+    }
+
+    // cria thread para comandos do utilizador
+    hCmdTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)cmdThread, &(key), NULL, NULL);
+
+    WaitForSingleObject(hCmdTh, INFINITE);
+
+    // saiu da thread e quer fechar
     SetEvent(hEvent);
 
-    // Fechar o handle do evento
     CloseHandle(hEvent);
-
+    CloseHandle(hCmdTh);
+    RegCloseKey(key.hkey);
     ReleaseMutex(hMutex);
     CloseHandle(hMutex);
     ExitProcess(0);

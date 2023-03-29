@@ -29,7 +29,8 @@ int CheckNumberOfInstances(HANDLE hSemaphore) {
 
 DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
     // Abrir o evento
-    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
+    HANDLE hEvent; 
+    hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
     if (hEvent == NULL)
     {
         _tprintf(_T("Deu merda..\n\n"));
@@ -38,6 +39,7 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 
     // Esperar pelo evento
     WaitForSingleObject(hEvent, INFINITE);
+    _tprintf(_T("Desconectado...\n"));
     // Server saiu entao sai
     CloseHandle(hEvent);
     ExitProcess(0);
@@ -45,7 +47,7 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 
 int _tmain(int argc, TCHAR* argv[]) {
     TCHAR STR[5];
-    HANDLE hSemaphore; 
+    HANDLE hSemaphore;
     HANDLE hServerTh;
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
@@ -54,7 +56,7 @@ int _tmain(int argc, TCHAR* argv[]) {
 #endif
 
     hSemaphore = CreateSemaphore(NULL, 2, 2, _T("Sapo")); // cria o objeto de semáforo com valor inicial 2
-    
+
     if (!CheckNumberOfInstances(hSemaphore)) {
         return 1;
     }
@@ -67,9 +69,9 @@ int _tmain(int argc, TCHAR* argv[]) {
     _tprintf(_T("Instância permitida!\n"));
 
     while (1) {
-      _tprintf(_T("SAPO\n\nEscreve quit para sair\n"));
-      _tscanf_s(_T("%s"), STR, 5);
-      if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
+        _tprintf(_T("SAPO\n\nEscreve quit para sair\n"));
+        _tscanf_s(_T("%s"), STR, 5);
+        if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
     }
 
     ReleaseSemaphore(hSemaphore, 1, NULL); // libera o semáforo
