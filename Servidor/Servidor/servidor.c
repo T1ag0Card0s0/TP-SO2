@@ -28,7 +28,6 @@ DWORD WINAPI cmdThread(LPVOID lparam) {
     TCHAR linhaComando[TAM];
     keyDados* p = (keyDados*)lparam;
     TCHAR value[TAM];
-    TCHAR value2[TAM];
 
     do {
         _tprintf(_T("\nOperation\n->"));
