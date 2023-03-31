@@ -2,6 +2,7 @@
 #include <tchar.h>
 #include <io.h>
 #include <fcntl.h>
+#include <ctype.h>
 #include <stdio.h>
 #define TAM 200
 
@@ -17,19 +18,23 @@ typedef struct InitialValues {
     TCHAR velocidade[TAM];
     TCHAR faixas[TAM];
 }InitialValues;
-
+int isNumber(TCHAR value[]) {//se o TCHAR introduzido for numero retorna 1 se nao retorna 0
+    for (int i = 0; value[i] != '\0'; i++)
+        if (!isdigit(value[i])) return 0;
+    return 1;
+}
 DWORD WINAPI cmdThread(LPVOID lparam) {
     TCHAR cmd[TAM];
-    TCHAR linha[TAM];
+    TCHAR linhaComando[TAM];
     keyDados* p = (keyDados*)lparam;
     TCHAR value[TAM];
     TCHAR value2[TAM];
 
     do {
         _tprintf(_T("\nOperation\n->"));
-        _fgetts(linha, TAM, stdin);
-        _stscanf_s(linha, _T("%s %s\n"), cmd, TAM, value, TAM); //falta verificações de comandos
-
+        _fgetts(linhaComando, TAM, stdin);
+        _stscanf_s(linhaComando, _T("%s %s\n"), cmd, TAM, value, TAM); //falta verificações de comandos
+        if (!isNumber(value)) continue;
         if (!(_tcscmp(cmd, _T("setv")))) { // COMANDO "SETV .." MUDA VALOR DE VELOCIDADE
 
             if (RegSetValueEx(p->hkey, _T("Velocidade"), 0, REG_SZ, (LPCBYTE)&value, sizeof(TCHAR) * (_tcslen(value) + 1)) != ERROR_SUCCESS)
@@ -107,5 +112,5 @@ int _tmain(int argc, TCHAR* argv[]) {
     CloseHandle(hEvent);
     CloseHandle(hCmdTh);
     RegCloseKey(key.hkey);
-    ExitProcess(0);
+    return 0;
 }
