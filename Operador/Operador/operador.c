@@ -29,10 +29,6 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
-    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
-        _tprintf(_T("O servidor ainda nao esta a correr\n"));
-        return 1;
-    }
 
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
