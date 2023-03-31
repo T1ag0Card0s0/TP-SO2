@@ -5,10 +5,10 @@
 #include <stdio.h>
 
 int CheckNumberOfInstances(HANDLE hSemaphore) {
-    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
-        _tprintf(_T("O servidor ainda nao esta a correr\n"));
-        return 0;
-    }
+    /* if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+         _tprintf(_T("O servidor ainda nao esta a correr\n"));
+         return 0;
+     }*/
     if (hSemaphore == NULL) {
         _tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
         return 0;
@@ -19,7 +19,7 @@ int CheckNumberOfInstances(HANDLE hSemaphore) {
         return 0;
     }
     else if (res == WAIT_TIMEOUT) { // se o semáforo não estiver disponível
-        _tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrando...\n"));
+        _tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrar...\n"));
         CloseHandle(hSemaphore);
         return 0;
     }
@@ -29,14 +29,13 @@ int CheckNumberOfInstances(HANDLE hSemaphore) {
 
 DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
     // Abrir o evento
-    HANDLE hEvent; 
+    HANDLE hEvent;
     hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
     if (hEvent == NULL)
     {
         _tprintf(_T("Deu merda..\n\n"));
         ExitThread(7);
     }
-
     // Esperar pelo evento
     WaitForSingleObject(hEvent, INFINITE);
     _tprintf(_T("Desconectado...\n"));
