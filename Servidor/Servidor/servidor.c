@@ -12,6 +12,7 @@ typedef struct keyDados {
     DWORD dwEstado;
     DWORD dwSize;
     HANDLE hkey;
+
 }keyDados;
 
 typedef struct InitialValues {
