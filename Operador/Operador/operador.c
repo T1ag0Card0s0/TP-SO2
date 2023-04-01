@@ -69,6 +69,7 @@ void GoToXY(int column, int line) {
         // a funcao de posicao do cursor deu erro
     }
 }
+
 void Draw(const TCHAR* obj, int idSapo,int column,int line) {
     //Guarda a posicao anterior à do desenho que vai ser feito
     //depois de desenhar volta à posicao anterior
@@ -120,6 +121,10 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
+    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+        _tprintf(_T("O servidor ainda nao esta a correr\n"));
+        return 1;
+    }
     //para representar os carros os sapos e os passeios
     _tprintf(PASSEIO);
     _tprintf(_T("%s%s%s%s%s%s"),LIGEIRO1_TO_LEFT,LIGEIRO1_TO_RIGHT,LIGEIRO2_TO_LEFT,LIGEIRO2_TO_RIGHT,PESADO_TO_LEFT,PESADO_TO_RIGHT);
