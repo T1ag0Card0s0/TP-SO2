@@ -69,10 +69,11 @@ typedef struct ObjectData {
     DWORD dwRoadNum;// numero da faixa de rodagem onde se localiza 0...N
     TCHAR *object;//representacao do objeto na consola
     ObjectWay objWay;//sentido de movimento
-    HANDLE *hMutex;
+    HANDLE *hMutex;//handle para as threads de cada carro nao escreverem
+                   //caracteres pertencentes ao objeto no sitio errado
 }ObjectData;
 
-void GoToXY(int column, int line) {
+void GoToXY(int column, int line) {//coloca o cursor no local desejado
     COORD coord = {column,line};
     //Obter um handle para o ecra da consola
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -84,7 +85,7 @@ void GoToXY(int column, int line) {
     }
 }
 
-void getCurrentCursorPosition(int* x, int* y) {
+void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda nelas a posicao atual do cursor
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     if (hConsole != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hConsole, &csbi)) {
@@ -92,7 +93,7 @@ void getCurrentCursorPosition(int* x, int* y) {
         *y = csbi.dwCursorPosition.Y;
     }
 }
-void Draw(ObjectData objData) {
+void Draw(ObjectData objData) {// mostra no ecra o objeto
     fflush(stdout);
     COORD pos = { objData.dwXCoord, objData.dwinitYCoord+objData.dwRoadNum*4};
     DWORD written;
@@ -107,7 +108,7 @@ void Draw(ObjectData objData) {
         }
     }
 }
-DWORD WINAPI ObjectMove(LPVOID param) {
+DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
     ObjectData* objData = (ObjectData*)param;
     DWORD len = lstrlen(objData->object);
     while (TRUE) {
@@ -165,7 +166,7 @@ DWORD WINAPI ObjectMove(LPVOID param) {
      objData.object = object;
      return objData;
  }
- ObjectData RandObject(DWORD RoadNumber,DWORD initY) {
+ ObjectData RandObject(DWORD RoadNumber,DWORD initY) {//funcao apenas para testes enquanto ainda nao aprendemos memoria partilhada
      TCHAR *leftObjects[] = {LIGEIRO1_TO_LEFT,LIGEIRO2_TO_LEFT,PESADO_TO_LEFT};
     TCHAR *rightObjects[] = {LIGEIRO1_TO_RIGHT,LIGEIRO2_TO_RIGHT,PESADO_TO_RIGHT};
      if(rand()%100<50)
