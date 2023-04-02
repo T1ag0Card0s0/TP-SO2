@@ -3,42 +3,49 @@
 #include <io.h>
 #include <fcntl.h>
 #include <stdio.h>
-#define LIGEIRO1_TO_LEFT _T("    ___\n\
- __/_|_|_\n\
-|________|\n\
-  O     O\n")
-#define LIGEIRO1_TO_RIGHT _T("   ___\n\
- _|_|_\\__\n\
-|________|\n\
- O     O\n")
-
-#define LIGEIRO2_TO_LEFT _T("     _____\n\
- ___/_|___|\n\
-|_________|\n\
-   O     O\n")
-#define LIGEIRO2_TO_RIGHT _T(" _____\n\
-|___|_\\___\n\
-|_________|\n\
- O      O\n")
-#define PESADO_TO_LEFT _T("  ________\n\
- /__|__|__|\n\
-|_________|\n\
+#include <time.h>
+#define MAX_WIDTH 50
+#define MAX_ROADS 4
+#define NUM_OBJECTS 4
+#define LIGEIRO1_TO_LEFT _T("     ___   \n\
+ ___/_|_|_  \n\
+|_________| \n\
+  O      O  \n")
+#define LIGEIRO1_TO_RIGHT _T("    ___\n\
+  _|_|_\\___\n\
+ |_________|\n\
   O      O\n")
-#define PESADO_TO_RIGHT _T(" ________\n\
-|__|__|__\\\n\
-|_________|\n\
-O      O\n")
-#define SAPO _T(" ___\n\
+
+#define LIGEIRO2_TO_LEFT _T("     _____ \n\
+ ___/_|___| \n\
+|_________| \n\
+   O     O \n")
+#define LIGEIRO2_TO_RIGHT _T("  _____\n\
+ |___|_\\___\n\
+ |_________|\n\
+  O      O\n")
+#define PESADO_TO_LEFT _T("  ________ \n\
+ /__|__|__| \n\
+|_________| \n\
+  O      O \n")
+#define PESADO_TO_RIGHT _T("  ________\n\
+ |__|__|__\\\n\
+ |_________|\n\
+  O      O\n")
+#define SAPO1 _T(" ___\n\
 /O O\\\n\
-\\_%d_/\n")
+\\_1_/\n")
+#define SAPO2 _T(" ___\n\
+/O O\\\n\
+\\_2_/\n")
 #define PASSEIO _T("_________________________________________________________________________________________________________\n")
 
 /*
 * CARROS
-      ___   
-   __/_|_|_
-  |________|
-    O     O
+       ___   
+   ___/_|_|_
+  |_________|
+    O      O
       ________
      /__|__|__|
     |_________|
@@ -55,11 +62,18 @@ O      O\n")
   /O O\
   \_2_/
  */
-void GoToXY(int column, int line) {
-    COORD coord;
-    coord.X = column;
-    coord.Y = line;
+typedef enum ObjectWay {UP,DOWN,LEFT,RIGHT}ObjectWay;
+typedef struct ObjectData {
+    DWORD dwinitYCoord;//coordenada de onde comeca a estrada
+    DWORD dwXCoord;//coordenada de onde se localiza o objeto na estrada
+    DWORD dwRoadNum;// numero da faixa de rodagem onde se localiza 0...N
+    TCHAR *object;//representacao do objeto na consola
+    ObjectWay objWay;//sentido de movimento
+    HANDLE *hMutex;
+}ObjectData;
 
+void GoToXY(int column, int line) {
+    COORD coord = {column,line};
     //Obter um handle para o ecra da consola
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -70,33 +84,64 @@ void GoToXY(int column, int line) {
     }
 }
 
-void Draw(const TCHAR* obj, int idSapo,int column,int line) {
-    //Guarda a posicao anterior à do desenho que vai ser feito
-    //depois de desenhar volta à posicao anterior
-    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &consoleInfo);
-    COORD originalPosition = consoleInfo.dwCursorPosition;
-    TCHAR object[200];
-    //Se o objeto a desenhar é o sapo mete o id
-    if (_tcscmp(obj, SAPO) == 0) {
-        _stprintf_s(object, _countof(object), obj, idSapo);
+void getCurrentCursorPosition(int* x, int* y) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hConsole != INVALID_HANDLE_VALUE && GetConsoleScreenBufferInfo(hConsole, &csbi)) {
+        *x = csbi.dwCursorPosition.X;
+        *y = csbi.dwCursorPosition.Y;
     }
-    else {
-        _tcscpy_s(object, sizeof(object) / sizeof(TCHAR), obj);
-    }
-    int colAux = column;
-    //mostra o objeto recebido
-    //foi a melhor forma que consegui fazer
-        for (int i = 0; object[i] != '\0'; i++) {
-            if (object[i] == '\n') { line++; colAux = column; }
-            else colAux++;
-            GoToXY(colAux, line);
-            _tprintf(_T("%c"), object[i]);
-        }
-      
-    GoToXY(originalPosition.X, originalPosition.Y);
 }
-DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
+void Draw(ObjectData objData) {
+    fflush(stdout);
+    COORD pos = { objData.dwXCoord, objData.dwinitYCoord+objData.dwRoadNum*4};
+    DWORD written;
+    for (int i = 0; i < lstrlen(objData.object); i++) {
+        if (objData.object[i] == '\n') {
+            pos.Y++;
+            pos.X = objData.dwXCoord;
+        }
+        else {
+            WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), &objData.object[i], 1, pos, &written);
+            pos.X++;
+        }
+    }
+}
+DWORD WINAPI ObjectMove(LPVOID param) {
+    ObjectData* objData = (ObjectData*)param;
+    DWORD len = lstrlen(objData->object);
+    while (TRUE) {
+        switch (objData->objWay) {
+            case UP: {
+                if (objData->dwRoadNum - 1 < 0)ExitThread(1);
+                objData->dwRoadNum--;
+                break;
+            }
+            case DOWN: {
+                if (objData->dwRoadNum + 1 > MAX_ROADS)ExitThread(1);
+                objData->dwRoadNum++;
+                break;
+            }
+            case LEFT: {
+                if (objData->dwXCoord - 1 < 2) ExitThread(1);
+                objData->dwXCoord--;
+                break;
+            }
+            case RIGHT: {
+                if (objData->dwXCoord + 1 > MAX_WIDTH) ExitThread(1);
+                objData->dwXCoord++;
+                break;
+            }
+        }
+        WaitForSingleObject(*(objData->hMutex), INFINITE);
+        Draw(*objData);
+        Sleep(50);  
+        ReleaseMutex(*(objData->hMutex));
+    }
+    ExitThread(0);
+}
+
+ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
     if (hEvent == NULL)
@@ -104,17 +149,36 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
         ExitThread(7);
     }
-
     // Esperar pelo evento
     WaitForSingleObject(hEvent, INFINITE);
     _tprintf(_T("Desconectado...\n"));
     // Server saiu entao sai
     CloseHandle(hEvent);
     ExitProcess(0);
-}
+ }
+ ObjectData setObjectData(DWORD dwinitYCoord, DWORD dwXCoord, DWORD dwRoadNum, const TCHAR* object, ObjectWay objWay) {
+     ObjectData objData;
+     objData.dwinitYCoord = dwinitYCoord;
+     objData.dwXCoord = dwXCoord;
+     objData.dwRoadNum = dwRoadNum;
+     objData.objWay = objWay;
+     objData.object = object;
+     return objData;
+ }
+ ObjectData RandObject(DWORD RoadNumber,DWORD initY) {
+     TCHAR *leftObjects[] = {LIGEIRO1_TO_LEFT,LIGEIRO2_TO_LEFT,PESADO_TO_LEFT};
+    TCHAR *rightObjects[] = {LIGEIRO1_TO_RIGHT,LIGEIRO2_TO_RIGHT,PESADO_TO_RIGHT};
+     if(rand()%100<50)
+        return setObjectData(initY,MAX_WIDTH,RoadNumber,leftObjects[rand()%3], LEFT);
+     else
+        return setObjectData(initY,0,RoadNumber,rightObjects[rand()%3], RIGHT);
 
+ }
 int _tmain(int argc, TCHAR* argv[]) {
-    HANDLE hServerTh;
+    DWORD initX=0, initY=0;
+    HANDLE hServerTh,hObjectMoveMutex;
+    HANDLE hObjectsMove[NUM_OBJECTS];
+    ObjectData objects[NUM_OBJECTS];
     TCHAR STR[5];
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
@@ -125,23 +189,27 @@ int _tmain(int argc, TCHAR* argv[]) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
     }
-    //para representar os carros os sapos e os passeios
-    _tprintf(PASSEIO);
-    _tprintf(_T("%s%s%s%s%s%s"),LIGEIRO1_TO_LEFT,LIGEIRO1_TO_RIGHT,LIGEIRO2_TO_LEFT,LIGEIRO2_TO_RIGHT,PESADO_TO_LEFT,PESADO_TO_RIGHT);
-    _tprintf(PASSEIO);
-    _tprintf(SAPO, 1);
-    //esta funcao leva 4 atributos, o array de TCHAR
-    //o id do SAPO se o array de TCHAR enviado nao for o sapo esta variavel nao faz nada
-    // posicao nas colunas, posicao nas linhas
-    Draw(SAPO,2,50, 5);
-  
+    srand(time(NULL));
+    getCurrentCursorPosition(&initX, &initY);
+    hObjectMoveMutex = CreateMutex(NULL, FALSE, NULL);
+    for (int i = 0; i < NUM_OBJECTS; i++) {
+        objects[i] = RandObject(i,initY);//apenas para teste
+        objects[i].hMutex = &hObjectMoveMutex;
+        hObjectsMove[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ObjectMove,(LPVOID)&objects[i], 0, NULL);
+    }
+    //Draw((ObjectData) {initY,20,4,LIGEIRO1_TO_LEFT});
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
 
     while (1) {
+        GoToXY(0, initY + NUM_OBJECTS * 4);
         _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
         _tscanf_s(_T("%s"), STR, 5);
         if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
     }
+    for (int i = 0; i < NUM_OBJECTS; i++) {
+        CloseHandle(hObjectsMove[i]);
+    }
+    CloseHandle(hObjectMoveMutex);
     ExitProcess(0);
 }
