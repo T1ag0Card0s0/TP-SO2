@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
-#define MAX_WIDTH 50
+#define MAX_WIDTH 80
 #define MAX_ROADS 4
 #define NUM_OBJECTS 4
 #define LIGEIRO1_TO_LEFT _T("     ___   \n\
@@ -69,8 +69,6 @@ typedef struct ObjectData {
     DWORD dwRoadNum;// numero da faixa de rodagem onde se localiza 0...N
     TCHAR *object;//representacao do objeto na consola
     ObjectWay objWay;//sentido de movimento
-    HANDLE *hMutex;//handle para as threads de cada carro nao escreverem
-                   //caracteres pertencentes ao objeto no sitio errado
 }ObjectData;
 
 void GoToXY(int column, int line) {//coloca o cursor no local desejado
@@ -134,10 +132,8 @@ DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
                 break;
             }
         }
-        WaitForSingleObject(*(objData->hMutex), INFINITE);
         Draw(*objData);
         Sleep(50);  
-        ReleaseMutex(*(objData->hMutex));
     }
     ExitThread(0);
 }
@@ -177,7 +173,7 @@ DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
  }
 int _tmain(int argc, TCHAR* argv[]) {
     DWORD initX=0, initY=0;
-    HANDLE hServerTh,hObjectMoveMutex;
+    HANDLE hServerTh;
     HANDLE hObjectsMove[NUM_OBJECTS];
     ObjectData objects[NUM_OBJECTS];
     TCHAR STR[5];
@@ -186,31 +182,27 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
-    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+   if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
     }
     srand(time(NULL));
+    _tprintf(_T("\n\n\n%s"),PASSEIO);
     getCurrentCursorPosition(&initX, &initY);
-    hObjectMoveMutex = CreateMutex(NULL, FALSE, NULL);
+    GoToXY(0, initY + NUM_OBJECTS * 4);
+    _tprintf(_T("%s"), PASSEIO);
     for (int i = 0; i < NUM_OBJECTS; i++) {
         objects[i] = RandObject(i,initY);//apenas para teste
-        objects[i].hMutex = &hObjectMoveMutex;
         hObjectsMove[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ObjectMove,(LPVOID)&objects[i], 0, NULL);
     }
-    //Draw((ObjectData) {initY,20,4,LIGEIRO1_TO_LEFT});
+    
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
-
+    GoToXY(0, initY + 4 + NUM_OBJECTS * 4);
     while (1) {
-        GoToXY(0, initY + NUM_OBJECTS * 4);
         _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
         _tscanf_s(_T("%s"), STR, 5);
         if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
     }
-    for (int i = 0; i < NUM_OBJECTS; i++) {
-        CloseHandle(hObjectsMove[i]);
-    }
-    CloseHandle(hObjectMoveMutex);
     ExitProcess(0);
 }
