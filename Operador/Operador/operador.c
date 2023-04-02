@@ -186,10 +186,12 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
-  /* if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+    //Verifica se o servidor esta a correr
+    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
-    }*/
+    }
+    //Comeca a mostrar o jogo
     srand(time(NULL));
     _tprintf(_T("\n\n\n%s"),PASSEIO);
     getCurrentCursorPosition(&initX, &initY);
@@ -202,6 +204,7 @@ int _tmain(int argc, TCHAR* argv[]) {
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
     GoToXY(0, initY + 4 + NUM_OBJECTS * 4);
+    //Pede input do utilizador
     while (1) {
         _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
         _tscanf_s(_T("%s"), STR, 5);
