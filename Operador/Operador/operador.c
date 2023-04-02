@@ -62,7 +62,7 @@
   /O O\
   \_2_/
  */
-typedef enum ObjectWay {UP,DOWN,LEFT,RIGHT}ObjectWay;
+typedef enum ObjectWay {UP,DOWN,LEFT,RIGHT,STOP}ObjectWay;
 typedef struct ObjectData {
     DWORD dwinitYCoord;//coordenada de onde comeca a estrada
     DWORD dwXCoord;//coordenada de onde se localiza o objeto na estrada
@@ -100,8 +100,9 @@ void Draw(ObjectData objData) {// mostra no ecra o objeto
             pos.Y++;
             pos.X = objData.dwXCoord;
         }
-        else {
-            WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), &objData.object[i], 1, pos, &written);
+        else if(pos.X<MAX_WIDTH&&pos.X>0) {
+            if(pos.X>11)
+                WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), &objData.object[i], 1, pos, &written);
             pos.X++;
         }
     }
@@ -122,13 +123,16 @@ DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
                 break;
             }
             case LEFT: {
-                if (objData->dwXCoord - 1 < 2) ExitThread(1);
+                if (objData->dwXCoord - 1 <= 0) ExitThread(1);
                 objData->dwXCoord--;
                 break;
             }
             case RIGHT: {
                 if (objData->dwXCoord + 1 > MAX_WIDTH) ExitThread(1);
                 objData->dwXCoord++;
+                break;
+            }
+            case STOP: {
                 break;
             }
         }
@@ -182,10 +186,10 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
-   if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+  /* if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
-    }
+    }*/
     srand(time(NULL));
     _tprintf(_T("\n\n\n%s"),PASSEIO);
     getCurrentCursorPosition(&initX, &initY);
@@ -195,7 +199,6 @@ int _tmain(int argc, TCHAR* argv[]) {
         objects[i] = RandObject(i,initY);//apenas para teste
         hObjectsMove[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ObjectMove,(LPVOID)&objects[i], 0, NULL);
     }
-    
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
     GoToXY(0, initY + 4 + NUM_OBJECTS * 4);
@@ -203,6 +206,9 @@ int _tmain(int argc, TCHAR* argv[]) {
         _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
         _tscanf_s(_T("%s"), STR, 5);
         if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
+    }
+    for (int i = 0; i < NUM_OBJECTS; i++) {
+        CloseHandle(hObjectsMove[i]);
     }
     ExitProcess(0);
 }
