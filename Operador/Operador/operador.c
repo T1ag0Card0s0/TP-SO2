@@ -4,25 +4,25 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
-#define MAX_WIDTH 80
+#define MAX_WIDTH 100
 #define MAX_ROADS 4
 #define NUM_OBJECTS 4
-#define LIGEIRO1_TO_LEFT _T("     ___   \n\
- ___/_|_|_  \n\
-|_________| \n\
-  O      O  \n")
-#define LIGEIRO1_TO_RIGHT _T("    ___\n\
-  _|_|_\\___\n\
- |_________|\n\
+#define LIGEIRO1_TO_LEFT _T("    ___ \n\
+ __/_|_|_  \n\
+|________| \n\
+ O      O  \n")
+#define LIGEIRO1_TO_RIGHT _T("    ___ \n\
+  _|_|_\\__\n\
+ |________|\n\
   O      O\n")
 
-#define LIGEIRO2_TO_LEFT _T("     _____ \n\
- ___/_|___| \n\
-|_________| \n\
-   O     O \n")
-#define LIGEIRO2_TO_RIGHT _T("  _____\n\
- |___|_\\___\n\
- |_________|\n\
+#define LIGEIRO2_TO_LEFT _T("     ____  \n\
+ ___/_|__| \n\
+|________| \n\
+ O      O \n")
+#define LIGEIRO2_TO_RIGHT _T("  ____ \n\
+ |__|_\\___\n\
+ |________|\n\
   O      O\n")
 #define PESADO_TO_LEFT _T("  ________ \n\
  /__|__|__| \n\
@@ -38,7 +38,7 @@
 #define SAPO2 _T(" ___\n\
 /O O\\\n\
 \\_2_/\n")
-#define PASSEIO _T("_________________________________________________________________________________________________________\n")
+#define PASSEIO _T("            ________________________________________________________________________________________\n")
 
 /*
 * CARROS
@@ -123,12 +123,12 @@ DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
                 break;
             }
             case LEFT: {
-                if (objData->dwXCoord - 1 <= 0) ExitThread(1);
+                if (objData->dwXCoord - 1 <= 0) objData->dwXCoord = MAX_WIDTH;
                 objData->dwXCoord--;
                 break;
             }
             case RIGHT: {
-                if (objData->dwXCoord + 1 > MAX_WIDTH) ExitThread(1);
+                if (objData->dwXCoord + 1 > MAX_WIDTH) objData->dwXCoord = 0;
                 objData->dwXCoord++;
                 break;
             }
@@ -187,10 +187,10 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
     //Verifica se o servidor esta a correr
-    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+    /*if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
-    }
+    }*/
     //Comeca a mostrar o jogo
     srand(time(NULL));
     _tprintf(_T("\n\n\n%s"),PASSEIO);
