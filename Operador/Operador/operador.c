@@ -4,10 +4,12 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
-#define MAX_WIDTH 100
-#define MAX_ROADS 4
-#define NUM_OBJECTS 4
-#define LIGEIRO1_TO_LEFT _T("    ___ \n\
+#define MAX_WIDTH 60
+#define NUM_ROADS 5
+#define NUM_CARS_PER_ROAD 4
+#define CAR _T(" C ")
+#define FROG _T(" F ")
+/*#define LIGEIRO1_TO_LEFT _T("    ___ \n\
  __/_|_|_  \n\
 |________| \n\
  O      O  \n")
@@ -37,50 +39,25 @@
 \\_1_/\n")
 #define SAPO2 _T(" ___\n\
 /O O\\\n\
-\\_2_/\n")
-#define PASSEIO _T("            ________________________________________________________________________________________\n")
+\\_2_/\n")*/
+#define PASSEIO _T(" ___________________________________________________________")
 
-/*
-* CARROS
-       ___   
-   ___/_|_|_
-  |_________|
-    O      O
-      ________
-     /__|__|__|
-    |_________|
-       O     O
-       _____
-   ___/_|___|
-  |_________|
-     O     O    
-*SAPO
-   ___
-  /O O\
-  \_1_/
-   ___
-  /O O\
-  \_2_/
- */
-typedef enum ObjectWay {UP,DOWN,LEFT,RIGHT,STOP}ObjectWay;
+typedef enum ObjectWay { UP, DOWN, LEFT, RIGHT, STOP }ObjectWay;
 typedef struct ObjectData {
-    DWORD dwinitYCoord;//coordenada de onde comeca a estrada
-    DWORD dwXCoord;//coordenada de onde se localiza o objeto na estrada
-    DWORD dwRoadNum;// numero da faixa de rodagem onde se localiza 0...N
-    TCHAR *object;//representacao do objeto na consola
+    DWORD dwXCoord,dwYCoord;//coordenada de onde se localiza o objeto na estrada
+    TCHAR object[3];//representacao do objeto na consola
     ObjectWay objWay;//sentido de movimento
 }ObjectData;
+typedef struct RoadData {
+    DWORD dwSpeed;
+    DWORD dwSpaceBetween;
+    DWORD dwNumObjects;
+    ObjectData objects[NUM_CARS_PER_ROAD];
+}RoadData;
 
 void GoToXY(int column, int line) {//coloca o cursor no local desejado
-    COORD coord = {column,line};
-    //Obter um handle para o ecra da consola
-    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    // chaama a funcao de posicao do cursor call
-    if (!SetConsoleCursorPosition(hConsole, coord))
-    {
-        // a funcao de posicao do cursor deu erro
-    }
+    COORD coord = { column,line };
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
 
 void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda nelas a posicao atual do cursor
@@ -93,56 +70,53 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
 }
 void Draw(ObjectData objData) {// mostra no ecra o objeto
     fflush(stdout);
-    COORD pos = { objData.dwXCoord, objData.dwinitYCoord+objData.dwRoadNum*4};
+    COORD pos = { objData.dwXCoord, objData.dwYCoord };
     DWORD written;
-    for (int i = 0; i < lstrlen(objData.object); i++) {
-        if (objData.object[i] == '\n') {
-            pos.Y++;
-            pos.X = objData.dwXCoord;
+    if(pos.X<MAX_WIDTH&&pos.X>1)
+       WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), &objData.object, 3, pos, &written);
+    else
+        WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), _T("   "),3, pos, &written);
+}
+void moveObject(ObjectData *objData) {
+    switch (objData->objWay) {
+        case UP: {
+            if (objData->dwYCoord - 1 < 0)break;
+            objData->dwYCoord--;
+            break;
         }
-        else if(pos.X<MAX_WIDTH&&pos.X>0) {
-            if(pos.X>11)
-                WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), &objData.object[i], 1, pos, &written);
-            pos.X++;
+        case DOWN: {
+            if (objData->dwYCoord + 1 > NUM_ROADS)break;
+            objData->dwYCoord++;
+            break;
+        }
+        case LEFT: {
+            if (objData->dwXCoord - 1 <= 0) objData->dwXCoord = MAX_WIDTH;
+            objData->dwXCoord--;
+            break;
+        }
+        case RIGHT: {
+            if (objData->dwXCoord + 1 > MAX_WIDTH) objData->dwXCoord = 0;
+            objData->dwXCoord++;
+            break;
         }
     }
 }
-DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
-    ObjectData* objData = (ObjectData*)param;
-    DWORD len = lstrlen(objData->object);
+DWORD WINAPI RoadMove(LPVOID param) {
+    RoadData* road = (RoadData*)param;
+    int runningCars=0,numSteps=0;
     while (TRUE) {
-        switch (objData->objWay) {
-            case UP: {
-                if (objData->dwRoadNum - 1 < 0)ExitThread(1);
-                objData->dwRoadNum--;
-                break;
-            }
-            case DOWN: {
-                if (objData->dwRoadNum + 1 > MAX_ROADS)ExitThread(1);
-                objData->dwRoadNum++;
-                break;
-            }
-            case LEFT: {
-                if (objData->dwXCoord - 1 <= 0) objData->dwXCoord = MAX_WIDTH;
-                objData->dwXCoord--;
-                break;
-            }
-            case RIGHT: {
-                if (objData->dwXCoord + 1 > MAX_WIDTH) objData->dwXCoord = 0;
-                objData->dwXCoord++;
-                break;
-            }
-            case STOP: {
-                break;
-            }
+        if (numSteps % road->dwSpaceBetween == 0&&runningCars<road->dwNumObjects) { numSteps = 0; runningCars++; }
+        for (int i = 0; i < runningCars; i++) {
+            moveObject(&road->objects[i]);
+            Draw(road->objects[i]);
         }
-        Draw(*objData);
-        Sleep(50);  
+        Sleep(road->dwSpeed);
+        numSteps++;
     }
     ExitThread(0);
 }
 
- DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
+DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
     if (hEvent == NULL)
@@ -156,30 +130,23 @@ DWORD WINAPI ObjectMove(LPVOID param) {//faz mover os carros sapos e assim
     // Server saiu entao sai
     CloseHandle(hEvent);
     ExitProcess(0);
- }
- ObjectData setObjectData(DWORD dwinitYCoord, DWORD dwXCoord, DWORD dwRoadNum, const TCHAR* object, ObjectWay objWay) {
-     ObjectData objData;
-     objData.dwinitYCoord = dwinitYCoord;
-     objData.dwXCoord = dwXCoord;
-     objData.dwRoadNum = dwRoadNum;
-     objData.objWay = objWay;
-     objData.object = object;
-     return objData;
- }
- ObjectData RandObject(DWORD RoadNumber,DWORD initY) {//funcao apenas para testes enquanto ainda nao aprendemos memoria partilhada
-     TCHAR *leftObjects[] = {LIGEIRO1_TO_LEFT,LIGEIRO2_TO_LEFT,PESADO_TO_LEFT};
-    TCHAR *rightObjects[] = {LIGEIRO1_TO_RIGHT,LIGEIRO2_TO_RIGHT,PESADO_TO_RIGHT};
-     if(rand()%100<50)
-        return setObjectData(initY,MAX_WIDTH,RoadNumber,leftObjects[rand()%3], LEFT);
-     else
-        return setObjectData(initY,0,RoadNumber,rightObjects[rand()%3], RIGHT);
-
- }
+}
+ObjectData setObjectData(DWORD dwYCoord, DWORD dwXCoord, const TCHAR object[3], ObjectWay objWay) {
+    ObjectData objData;
+    objData.dwYCoord = dwYCoord;
+    objData.dwXCoord = dwXCoord;
+    objData.objWay = objWay;
+    for (int i = 0; i < 3; i++) {
+        objData.object[i] = object[i];
+    }
+    return objData;
+}
 int _tmain(int argc, TCHAR* argv[]) {
-    DWORD initX=0, initY=0;
+    DWORD initX = 0, initY = 0;
     HANDLE hServerTh;
-    HANDLE hObjectsMove[NUM_OBJECTS];
-    ObjectData objects[NUM_OBJECTS];
+    HANDLE hObjectsMove[NUM_ROADS*NUM_CARS_PER_ROAD];
+    RoadData roads[NUM_ROADS];
+    ObjectData players[2];
     TCHAR STR[5];
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
@@ -193,24 +160,40 @@ int _tmain(int argc, TCHAR* argv[]) {
     }*/
     //Comeca a mostrar o jogo
     srand(time(NULL));
-    _tprintf(_T("\n\n\n%s"),PASSEIO);
+    _tprintf(_T("\n%s"), PASSEIO);
     getCurrentCursorPosition(&initX, &initY);
-    GoToXY(0, initY + NUM_OBJECTS * 4);
+    GoToXY(0, initY +1+ NUM_ROADS );
     _tprintf(_T("%s"), PASSEIO);
-    for (int i = 0; i < NUM_OBJECTS; i++) {
-        objects[i] = RandObject(i,initY);//apenas para teste
-        hObjectsMove[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ObjectMove,(LPVOID)&objects[i], 0, NULL);
+
+    //Sapos
+    players[0] = setObjectData(initY + 2 + NUM_ROADS, 2, FROG, STOP);
+    players[1] = setObjectData(initY + 2 + NUM_ROADS, 5, FROG, STOP);
+    Draw(players[0]);
+    Draw(players[1]);
+
+    //carros
+    for (int i = 0; i < NUM_ROADS; i++) {
+        roads[i].dwSpaceBetween =MAX_WIDTH / NUM_CARS_PER_ROAD;//começarem com espaçados aleatoriamente
+        roads[i].dwSpeed = 100;
+        roads[i].dwNumObjects = NUM_CARS_PER_ROAD;
+        for (int j = 0; j < NUM_CARS_PER_ROAD; j++) {
+            if (i % 2 == 0)
+                roads[i].objects[j] = setObjectData(initY+i+1,0,CAR,RIGHT) ;//apenas para teste
+            else
+                roads[i].objects[j] = setObjectData(initY + i + 1, MAX_WIDTH, CAR, LEFT);  
+        }
+        hObjectsMove[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoadMove, (LPVOID)&roads[i], 0, NULL);
     }
     // algumas cenas a null para ja so para funcionar
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
-    GoToXY(0, initY + 4 + NUM_OBJECTS * 4);
+    GoToXY(0, initY + NUM_ROADS+3);
     //Pede input do utilizador
     while (1) {
         _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
         _tscanf_s(_T("%s"), STR, 5);
         if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
     }
-    for (int i = 0; i < NUM_OBJECTS; i++) {
+    for (int i = 0; i < NUM_ROADS; i++) {
         CloseHandle(hObjectsMove[i]);
     }
     ExitProcess(0);
