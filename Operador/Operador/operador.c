@@ -173,9 +173,9 @@ int _tmain(int argc, TCHAR* argv[]) {
 
     //carros
     for (int i = 0; i < NUM_ROADS; i++) {
-        roads[i].dwSpaceBetween =MAX_WIDTH / NUM_CARS_PER_ROAD;//começarem com espaçados aleatoriamente
-        roads[i].dwSpeed = 100;
-        roads[i].dwNumObjects = NUM_CARS_PER_ROAD;
+        roads[i].dwSpaceBetween =rand()%(MAX_WIDTH / NUM_CARS_PER_ROAD)+10;
+        roads[i].dwSpeed = rand()%1000;
+        roads[i].dwNumObjects = rand()%NUM_CARS_PER_ROAD+1;
         for (int j = 0; j < NUM_CARS_PER_ROAD; j++) {
             if (i % 2 == 0)
                 roads[i].objects[j] = setObjectData(initY+i+1,0,CAR,RIGHT) ;//apenas para teste
