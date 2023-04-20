@@ -1,59 +1,57 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <tchar.h>
 #include <io.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <time.h>
+#define TAM 200
+#define FILE_MAPPING _T("shared")
 #define MAX_WIDTH 60
-#define NUM_ROADS 5
-#define NUM_CARS_PER_ROAD 4
+#define NUM_ROADS 8
+#define NUM_CARS_PER_ROAD 8
 #define CAR _T(" C ")
 #define FROG _T(" F ")
-/*#define LIGEIRO1_TO_LEFT _T("    ___ \n\
- __/_|_|_  \n\
-|________| \n\
- O      O  \n")
-#define LIGEIRO1_TO_RIGHT _T("    ___ \n\
-  _|_|_\\__\n\
- |________|\n\
-  O      O\n")
-
-#define LIGEIRO2_TO_LEFT _T("     ____  \n\
- ___/_|__| \n\
-|________| \n\
- O      O \n")
-#define LIGEIRO2_TO_RIGHT _T("  ____ \n\
- |__|_\\___\n\
- |________|\n\
-  O      O\n")
-#define PESADO_TO_LEFT _T("  ________ \n\
- /__|__|__| \n\
-|_________| \n\
-  O      O \n")
-#define PESADO_TO_RIGHT _T("  ________\n\
- |__|__|__\\\n\
- |_________|\n\
-  O      O\n")
-#define SAPO1 _T(" ___\n\
-/O O\\\n\
-\\_1_/\n")
-#define SAPO2 _T(" ___\n\
-/O O\\\n\
-\\_2_/\n")*/
+#define EVENT_NAME _T("MyEvent")
+#define EVENT_NAME2 _T("MyEvent2")
+#define FILE_MAPPING_NAME _T("MySharedMemory")
+#define CMD_SHARED_NAME _T("SharedCmd")
 #define PASSEIO _T(" ___________________________________________________________")
 
+typedef TCHAR Buffer[];
+
 typedef enum ObjectWay { UP, DOWN, LEFT, RIGHT, STOP }ObjectWay;
+
 typedef struct ObjectData {
-    DWORD dwXCoord,dwYCoord;//coordenada de onde se localiza o objeto na estrada
+    DWORD dwXCoord, dwYCoord;//coordenada de onde se localiza o objeto na estrada
     TCHAR object[3];//representacao do objeto na consola
     ObjectWay objWay;//sentido de movimento
 }ObjectData;
+
 typedef struct RoadData {
+    HANDLE hEventSh;
+    HANDLE hMutexSh;
     DWORD dwSpeed;
     DWORD dwSpaceBetween;
     DWORD dwNumObjects;
     ObjectData objects[NUM_CARS_PER_ROAD];
 }RoadData;
+
+typedef enum CmdType
+{
+    STOP_MOVE,
+    CHANGE_DIR,
+    PUT_OBSTACLE
+
+}CmdType;
+
+typedef struct Cmd {
+    HANDLE hMutexCmd;
+    CmdType type;
+    int value;
+}Cmd;
+
+HANDLE hEventSh = NULL;
+HANDLE hMutexSh = NULL;
 
 void GoToXY(int column, int line) {//coloca o cursor no local desejado
     COORD coord = { column,line };
@@ -68,51 +66,52 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
         *y = csbi.dwCursorPosition.Y;
     }
 }
+
 void Draw(ObjectData objData) {// mostra no ecra o objeto
     fflush(stdout);
     COORD pos = { objData.dwXCoord, objData.dwYCoord };
     DWORD written;
-    if(pos.X<MAX_WIDTH&&pos.X>1)
-       WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), &objData.object, 3, pos, &written);
+    if (pos.X < MAX_WIDTH && pos.X>1)
+        WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), CAR, 3, pos, &written);
     else
-        WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), _T("   "),3, pos, &written);
+        WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), _T("   "), 3, pos, &written);
 }
-void moveObject(ObjectData *objData) {
-    switch (objData->objWay) {
-        case UP: {
-            if (objData->dwYCoord - 1 < 0)break;
-            objData->dwYCoord--;
-            break;
-        }
-        case DOWN: {
-            if (objData->dwYCoord + 1 > NUM_ROADS)break;
-            objData->dwYCoord++;
-            break;
-        }
-        case LEFT: {
-            if (objData->dwXCoord - 1 <= 0) objData->dwXCoord = MAX_WIDTH;
-            objData->dwXCoord--;
-            break;
-        }
-        case RIGHT: {
-            if (objData->dwXCoord + 1 > MAX_WIDTH) objData->dwXCoord = 0;
-            objData->dwXCoord++;
-            break;
-        }
+
+DWORD WINAPI ReadSharedMemory(LPVOID lpParam) {
+
+    HANDLE hMapFile = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, FILE_MAPPING_NAME);
+    if (hMapFile == NULL) {
+        _tprintf(_T("Could not open file mapping object (%d)\n"), GetLastError());
+        return 1;
     }
-}
-DWORD WINAPI RoadMove(LPVOID param) {
-    RoadData* road = (RoadData*)param;
-    int runningCars=0,numSteps=0;
+
+    RoadData* pData = (RoadData*)MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(RoadData));
+
+    if (pData == NULL) {
+        _tprintf(_T("Could not map view of file (%d)\n"), GetLastError());
+        CloseHandle(hMapFile);
+        return 1;
+    }
+
+    pData->hEventSh = OpenEvent(EVENT_ALL_ACCESS, FALSE, EVENT_NAME);
+    if (pData->hEventSh == NULL) {
+        _tprintf(_T("OpenEvent failed (%d)\n"), GetLastError());
+        return 1;
+    }
+
     while (TRUE) {
-        if (numSteps % road->dwSpaceBetween == 0&&runningCars<road->dwNumObjects) { numSteps = 0; runningCars++; }
-        for (int i = 0; i < runningCars; i++) {
-            moveObject(&road->objects[i]);
-            Draw(road->objects[i]);
+        WaitForSingleObject(pData->hEventSh, INFINITE);
+
+        for (int i = 0; i <= sizeof(pData); i++) {
+            for (int j = 0; j < pData[i].dwNumObjects; j++) {
+                WaitForSingleObject(pData->hMutexSh, INFINITE);
+                Draw(pData[i].objects[j]);
+                ReleaseMutex(pData->hMutexSh, INFINITE);
+            }
         }
-        Sleep(road->dwSpeed);
-        numSteps++;
     }
+
+    UnmapViewOfFile(hMapFile);
     ExitThread(0);
 }
 
@@ -131,70 +130,35 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
     CloseHandle(hEvent);
     ExitProcess(0);
 }
-ObjectData setObjectData(DWORD dwYCoord, DWORD dwXCoord, const TCHAR object[3], ObjectWay objWay) {
-    ObjectData objData;
-    objData.dwYCoord = dwYCoord;
-    objData.dwXCoord = dwXCoord;
-    objData.objWay = objWay;
-    for (int i = 0; i < 3; i++) {
-        objData.object[i] = object[i];
-    }
-    return objData;
-}
+
 int _tmain(int argc, TCHAR* argv[]) {
     DWORD initX = 0, initY = 0;
-    HANDLE hServerTh;
-    HANDLE hObjectsMove[NUM_ROADS*NUM_CARS_PER_ROAD];
-    RoadData roads[NUM_ROADS];
-    ObjectData players[2];
-    TCHAR STR[5];
+
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
     _setmode(_fileno(stdout), _O_WTEXT);
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
     //Verifica se o servidor esta a correr
-    /*if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
-    }*/
+    }
+
     //Comeca a mostrar o jogo
     srand(time(NULL));
     _tprintf(_T("\n%s"), PASSEIO);
     getCurrentCursorPosition(&initX, &initY);
-    GoToXY(0, initY +1+ NUM_ROADS );
+    GoToXY(0, 20);
     _tprintf(_T("%s"), PASSEIO);
 
-    //Sapos
-    players[0] = setObjectData(initY + 2 + NUM_ROADS, 2, FROG, STOP);
-    players[1] = setObjectData(initY + 2 + NUM_ROADS, 5, FROG, STOP);
-    Draw(players[0]);
-    Draw(players[1]);
+    HANDLE hReadTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadSharedMemory, NULL, 0, NULL);
+    HANDLE hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
 
-    //carros
-    for (int i = 0; i < NUM_ROADS; i++) {
-        roads[i].dwSpaceBetween =rand()%(MAX_WIDTH / NUM_CARS_PER_ROAD)+10;
-        roads[i].dwSpeed = rand()%1000;
-        roads[i].dwNumObjects = rand()%NUM_CARS_PER_ROAD+1;
-        for (int j = 0; j < NUM_CARS_PER_ROAD; j++) {
-            if (i % 2 == 0)
-                roads[i].objects[j] = setObjectData(initY+i+1,0,CAR,RIGHT) ;//apenas para teste
-            else
-                roads[i].objects[j] = setObjectData(initY + i + 1, MAX_WIDTH, CAR, LEFT);  
-        }
-        hObjectsMove[i] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoadMove, (LPVOID)&roads[i], 0, NULL);
-    }
-    // algumas cenas a null para ja so para funcionar
-    hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
-    GoToXY(0, initY + NUM_ROADS+3);
-    //Pede input do utilizador
-    while (1) {
-        _tprintf(_T("OPERADOR\n\nEscreve quit para sair\n"));
-        _tscanf_s(_T("%s"), STR, 5);
-        if (_tcscmp(STR, _T("QUIT")) == 0 || _tcscmp(STR, _T("quit")) == 0) break;
-    }
-    for (int i = 0; i < NUM_ROADS; i++) {
-        CloseHandle(hObjectsMove[i]);
-    }
+    WaitForSingleObject(hServerTh, INFINITE);
+
+    GoToXY(0, initY + NUM_ROADS + 3);
+    CloseHandle(hReadTh);
+    CloseHandle(hServerTh);
     ExitProcess(0);
 }
