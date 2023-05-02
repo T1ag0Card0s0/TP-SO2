@@ -1,0 +1,1 @@
+start cmd /k ".\Operador\x64\Debug\Operador.exe"
