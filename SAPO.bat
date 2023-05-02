@@ -1,0 +1,1 @@
+start cmd /k ".\Sapo\x64\Debug\Sapo.exe"
