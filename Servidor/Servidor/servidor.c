@@ -337,12 +337,6 @@ void initBufCir(DADOS_THREAD* dadosThread, HANDLE hFileMap) {
         exit(-1);
     }
 
-    dadosThread->memPartilhada = (BUFFER_CIRCULAR*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-    if (dadosThread->memPartilhada == NULL) {
-        _tprintf(TEXT("Erro no MapViewOfFile\n"));
-        exit(-1);
-    }
-
     dadosThread->memPartilhada->dwNumCons = 0;
     dadosThread->memPartilhada->dwNumProd = 0;
     dadosThread->memPartilhada->dwPosE = 0;
@@ -403,6 +397,11 @@ int _tmain(int argc, TCHAR* argv[]) {
             return -1;
         }
     }
+    game.sharedBoard = (SHARED_BOARD*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SHARED_BOARD));
+    if (game.sharedBoard == NULL) {
+        _tprintf(_T("Erro no mapviewoffile\n"));
+        exit(-1);
+    }
     hFileMapBufCir = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, CMD_FILE_MAP);
     if (hFileMapBufCir == NULL) {
         hFileMapBufCir = CreateFileMapping(
@@ -418,10 +417,9 @@ int _tmain(int argc, TCHAR* argv[]) {
             return -1;
         }
     }
-
-    game.sharedBoard = (SHARED_BOARD*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SHARED_BOARD));
-    if (game.sharedBoard == NULL) {
-        _tprintf(_T("Erro no mapviewoffile\n"));
+    dadosThread.memPartilhada = (BUFFER_CIRCULAR*)MapViewOfFile(hFileMapBufCir, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+    if (dadosThread.memPartilhada == NULL) {
+        _tprintf(TEXT("Erro no MapViewOfFile\n"));
         exit(-1);
     }
     //inicializacao
