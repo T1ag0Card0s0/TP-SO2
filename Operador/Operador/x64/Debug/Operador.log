@@ -1,0 +1,4 @@
+﻿  operador.c
+C:\SO2\TP-SO2\Operador\Operador\operador.c(73,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Operador\Operador\operador.c(74,31): warning C4018: '<': incompatibilidade de signed/unsigned
+  Operador.vcxproj -> C:\SO2\TP-SO2\Operador\x64\Debug\Operador.exe

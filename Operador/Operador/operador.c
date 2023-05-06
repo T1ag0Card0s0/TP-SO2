@@ -5,53 +5,21 @@
 #include <stdio.h>
 #include <time.h>
 #define TAM 200
-#define FILE_MAPPING _T("shared")
-#define MAX_WIDTH 60
-#define NUM_ROADS 8
-#define NUM_CARS_PER_ROAD 8
-#define CAR _T(" C ")
-#define FROG _T(" F ")
-#define EVENT_NAME _T("MyEvent")
-#define EVENT_NAME2 _T("MyEvent2")
-#define FILE_MAPPING_NAME _T("MySharedMemory")
-#define CMD_SHARED_NAME _T("SharedCmd")
-#define PASSEIO _T(" ___________________________________________________________")
 
-typedef TCHAR Buffer[];
+#define MAX_ROADS 8
+#define MAX_WIDTH 20
 
-typedef enum ObjectWay { UP, DOWN, LEFT, RIGHT, STOP }ObjectWay;
+#define MUTEX_SERVER _T("Server")
+#define BOARD_SHARED_MEMORY _T("ShareBoard")
+#define EXIT_EVENT _T("ExitEvent")
+#define UPDATE_EVENT _T("UpdateEvent")
 
-typedef struct ObjectData {
-    DWORD dwXCoord, dwYCoord;//coordenada de onde se localiza o objeto na estrada
-    TCHAR object[3];//representacao do objeto na consola
-    ObjectWay objWay;//sentido de movimento
-}ObjectData;
+typedef struct SHARED_BOARD {
+    DWORD dwWidth;
+    DWORD dwHeight;
 
-typedef struct RoadData {
-    HANDLE hEventSh;
-    HANDLE hMutexSh;
-    DWORD dwSpeed;
-    DWORD dwSpaceBetween;
-    DWORD dwNumObjects;
-    ObjectData objects[NUM_CARS_PER_ROAD];
-}RoadData;
-
-typedef enum CmdType
-{
-    STOP_MOVE,
-    CHANGE_DIR,
-    PUT_OBSTACLE
-
-}CmdType;
-
-typedef struct Cmd {
-    HANDLE hMutexCmd;
-    CmdType type;
-    int value;
-}Cmd;
-
-HANDLE hEventSh = NULL;
-HANDLE hMutexSh = NULL;
+    TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
+}SHARED_BOARD;
 
 void GoToXY(int column, int line) {//coloca o cursor no local desejado
     COORD coord = { column,line };
@@ -67,59 +35,57 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
     }
 }
 
-void Draw(ObjectData objData) {// mostra no ecra o objeto
-    fflush(stdout);
-    COORD pos = { objData.dwXCoord, objData.dwYCoord };
-    DWORD written;
-    if (pos.X < MAX_WIDTH && pos.X>1)
-        WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), CAR, 3, pos, &written);
-    else
-        WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), _T("   "), 3, pos, &written);
-}
+DWORD WINAPI ReadSharedMemory(LPVOID param) {
 
-DWORD WINAPI ReadSharedMemory(LPVOID lpParam) {
+    SHARED_BOARD* sharedBoard;
 
-    HANDLE hMapFile = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, FILE_MAPPING_NAME);
-    if (hMapFile == NULL) {
-        _tprintf(_T("Could not open file mapping object (%d)\n"), GetLastError());
-        return 1;
-    }
+    HANDLE hFileMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, BOARD_SHARED_MEMORY);
+    if (hFileMap == NULL) {
+        hFileMap = CreateFileMapping(
+            INVALID_HANDLE_VALUE,
+            NULL,
+            PAGE_READWRITE,
+            0,
+            sizeof(SHARED_BOARD),
+            BOARD_SHARED_MEMORY);
 
-    RoadData* pData = (RoadData*)MapViewOfFile(hMapFile, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(RoadData));
-
-    if (pData == NULL) {
-        _tprintf(_T("Could not map view of file (%d)\n"), GetLastError());
-        CloseHandle(hMapFile);
-        return 1;
-    }
-
-    pData->hEventSh = OpenEvent(EVENT_ALL_ACCESS, FALSE, EVENT_NAME);
-    if (pData->hEventSh == NULL) {
-        _tprintf(_T("OpenEvent failed (%d)\n"), GetLastError());
-        return 1;
-    }
-
-    while (TRUE) {
-        WaitForSingleObject(pData->hEventSh, INFINITE);
-
-        for (int i = 0; i <= sizeof(pData); i++) {
-            for (int j = 0; j < pData[i].dwNumObjects; j++) {
-                WaitForSingleObject(pData->hMutexSh, INFINITE);
-                Draw(pData[i].objects[j]);
-                ReleaseMutex(pData->hMutexSh, INFINITE);
-            }
+        if (hFileMap == NULL) {
+            _tprintf(TEXT("Erro no CreateFileMapping\n"));
+            return -1;
         }
     }
+    sharedBoard = (SHARED_BOARD*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SHARED_BOARD));
+    if (sharedBoard == NULL) {
+        _tprintf(_T("Erro no mapviewoffile\n"));
+        exit(-1);
+    }
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
+    if (hEvent == NULL) {
+        _tprintf(_T("Erro a abrir o evento\n\n"));
+        ExitThread(7);
+    }
+    int i = 0;
+    while (TRUE) {
+        GoToXY(0, 0);
 
-    UnmapViewOfFile(hMapFile);
+        WaitForSingleObject(hEvent, INFINITE);
+        _tprintf(_T("PASSEI AQUI %d\n"), i++);
+        for (int i = 0; i < sharedBoard->dwHeight; i++) {
+            for (int j = 0; j < sharedBoard->dwWidth; j++) {
+                _tprintf(_T("%c"), sharedBoard->board[i][j]);
+            }
+            _tprintf(_T("\n"));
+        }
+        ResetEvent(hEvent);
+
+    }
+    UnmapViewOfFile(sharedBoard);
     ExitThread(0);
 }
 
-DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
-
-    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
-    if (hEvent == NULL)
-    {
+DWORD WINAPI CheckIfServerExit(LPVOID param) {
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, EXIT_EVENT);
+    if (hEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
         ExitThread(7);
     }
@@ -133,6 +99,9 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 
 int _tmain(int argc, TCHAR* argv[]) {
     DWORD initX = 0, initY = 0;
+    HANDLE hReadTh;
+    HANDLE hServerTh;
+
 
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
@@ -140,25 +109,19 @@ int _tmain(int argc, TCHAR* argv[]) {
     _setmode(_fileno(stderr), _O_WTEXT);
 #endif
     //Verifica se o servidor esta a correr
-    if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+    if (OpenMutex(SYNCHRONIZE, FALSE, MUTEX_SERVER) == NULL) {
         _tprintf(_T("O servidor ainda nao esta a correr\n"));
         return 1;
     }
 
-    //Comeca a mostrar o jogo
-    srand(time(NULL));
-    _tprintf(_T("\n%s"), PASSEIO);
-    getCurrentCursorPosition(&initX, &initY);
-    GoToXY(0, 20);
-    _tprintf(_T("%s"), PASSEIO);
-
-    HANDLE hReadTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadSharedMemory, NULL, 0, NULL);
-    HANDLE hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
+    hReadTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadSharedMemory, NULL, 0, NULL);
+    hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
 
     WaitForSingleObject(hServerTh, INFINITE);
 
-    GoToXY(0, initY + NUM_ROADS + 3);
     CloseHandle(hReadTh);
     CloseHandle(hServerTh);
     ExitProcess(0);
 }
+
+
