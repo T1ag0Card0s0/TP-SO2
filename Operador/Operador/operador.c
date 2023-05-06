@@ -159,7 +159,6 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
 }
 
 void initDadosThread(DADOS_THREAD* dados, HANDLE* hFileMap) {
-    BOOL primeiroProcesso = FALSE;
     dados->hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
     dados->hSemLeitura = CreateSemaphore(NULL, 0, 1, READ_SEMAPHORE);
     dados->hMutex = CreateMutex(NULL, FALSE, MUTEX_PROD);
@@ -170,7 +169,6 @@ void initDadosThread(DADOS_THREAD* dados, HANDLE* hFileMap) {
 
     *hFileMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, CMD_FILE_MAP);
     if (*hFileMap == NULL) {
-        primeiroProcesso = TRUE;
         *hFileMap = CreateFileMapping(
             INVALID_HANDLE_VALUE,
             NULL,
@@ -187,12 +185,6 @@ void initDadosThread(DADOS_THREAD* dados, HANDLE* hFileMap) {
     if (dados->memPartilhada == NULL) {
         _tprintf(TEXT("Erro no MapViewOfFile\n"));
         exit(-1);
-    }
-    if (primeiroProcesso == TRUE) {
-        dados->memPartilhada->dwNumCons = 0;
-        dados->memPartilhada->dwNumProd = 0;
-        dados->memPartilhada->dwPosE = 0;
-        dados->memPartilhada->dwPosL = 0;
     }
     dados->dwTerminar = 0;
 
