@@ -115,7 +115,7 @@ DWORD WINAPI ThreadConsumidor(LPVOID param) {
         WaitForSingleObject(game->hSemLeitura, INFINITE);
         WaitForSingleObject(game->hMutex, INFINITE);
         _tprintf(_T("\nRecebi: %s"), game->sharedMemory->bufferCircular.buffer[game->sharedMemory->bufferCircular.dwPosL].command);
-        game->sharedMemory->bufferCircular.dwPosL++; //incrementamos a posicao de leitura para o proximo consumidor ler na posicao seguinte
+       // game->sharedMemory->bufferCircular.dwPosL++; //nao percebi poque nao funciona
 
         //se apos o incremento a posicao de leitura chegar ao fim, tenho de voltar ao inicio
         if (game->sharedMemory->bufferCircular.dwPosL == TAM_BUF)
