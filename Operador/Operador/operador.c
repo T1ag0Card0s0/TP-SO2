@@ -73,11 +73,12 @@ DWORD WINAPI ReadSharedMemory(LPVOID param) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
         ExitThread(7);
     }
+
     COORD pos = { 0,1 };
     DWORD written;
     while (TRUE) {
         fflush(stdin); fflush(stdout);
-       WaitForSingleObject(hEvent, INFINITE);
+        WaitForSingleObject(hEvent, INFINITE);
         for (int i = 0; i < sharedBoard->dwHeight; i++) {
             WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), sharedBoard->board[i], sharedBoard->dwWidth, pos, &written);
             pos.Y++;
@@ -105,26 +106,29 @@ DWORD WINAPI CheckIfServerExit(LPVOID param) {
 
 DWORD WINAPI ThreadProdutor(LPVOID param) {
     SHARED_DATA* dados = (SHARED_DATA*)param;
-    int contador = 0;
     COORD pos = { 0,0 };
     DWORD written;
+    TCHAR command[TAM];
     while (!dados->dwTerminar) {
+        fflush(stdin); fflush(stdout);
         GoToXY(pos.X, pos.Y);
         FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
         _tprintf(_T("[OPERADOR]$ "));
-        _fgetts(dados->sharedMemory->bufferCircular.buffer[dados->sharedMemory->bufferCircular.dwPosE].command, TAM, stdin);
+        _fgetts(command, TAM, stdin);
+
         //esperamos por uma posicao para escrevermos
         WaitForSingleObject(dados->hSemEscrita, INFINITE);
-
+        
         //esperamos que o mutex esteja livre
         WaitForSingleObject(dados->hMutex, INFINITE);
-        dados->sharedMemory->bufferCircular.dwPosE++;
-
+        _tcscpy_s(dados->sharedMemory->bufferCircular.buffer[dados->sharedMemory->bufferCircular.dwPosE].command, TAM, command);
+       // dados->sharedMemory->bufferCircular.dwPosE++; //nao percebi porque nao funciona
+       
         if (dados->sharedMemory->bufferCircular.dwPosE == TAM_BUF)
             dados->sharedMemory->bufferCircular.dwPosE = 0;
 
         ReleaseMutex(dados->hMutex);
-        ReleaseSemaphore(dados->hSemLeitura, 1, NULL);
+       ReleaseSemaphore(dados->hSemLeitura, 1, NULL);
     }
     ExitThread(0);
 }
