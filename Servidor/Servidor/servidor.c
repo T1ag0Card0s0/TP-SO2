@@ -16,14 +16,13 @@
 #define MAX_CARS_PER_ROAD 8
 
 #define MUTEX_SERVER _T("Server")
-#define BOARD_SHARED_MEMORY _T("ShareBoard")
+#define SHARED_MEMORY_NAME _T("ShareMemory")
 #define EXIT_EVENT _T("ExitEvent")
 #define UPDATE_EVENT _T("UpdateEvent")
 #define MUTEX_ROAD _T("MutexRoad")
 #define WRITE_SEMAPHORE _T("WriteSemaphore")
 #define READ_SEMAPHORE _T("ReadSemaphore")
 #define MUTEX_CONSUMIDOR _T("MutexConsumidor")
-#define CMD_FILE_MAP _T("CMDFileMap")
 
 #define KEY_SPEED TEXT("Speed")
 #define KEY_ROADS TEXT("Roads")
@@ -39,6 +38,21 @@ typedef struct SHARED_BOARD {
 
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
+typedef struct CELULA_BUFFER {
+    TCHAR command[TAM];
+}CELULA_BUFFER;
+typedef struct BUFFER_CIRCULAR {
+    DWORD dwNumProd;
+    DWORD dwNumCons;
+    DWORD dwPosE;//proxima posicao de escrita
+    DWORD dwPosL;//proxima posicao de leitura
+
+    CELULA_BUFFER buffer[TAM_BUF];
+}BUFFER_CIRCULAR;
+typedef struct SHARED_MEMORY {
+    SHARED_BOARD sharedBoard;
+    BUFFER_CIRCULAR bufferCircular;
+}SHARED_MEMORY;
 
 typedef enum WAY { UP, DOWN, LEFT, RIGHT, STOP }WAY;
 typedef struct OBJECT {
@@ -66,22 +80,13 @@ typedef struct GAME {
 
     HANDLE hKey;
 
-    SHARED_BOARD* sharedBoard;
+    HANDLE hSemEscrita;//handle para o semaforo que controla as escritas (controla quantas posicoes estao vazias)
+    HANDLE hSemLeitura; //handle para o semaforo que controla as leituras (controla quantas posicoes estao preenchidas)
+    HANDLE hMutex;
+
+    SHARED_MEMORY *sharedMemory;
     ROAD roads[MAX_ROADS];
 }GAME;
-
-typedef struct CELULA_BUFFER {
-    DWORD id;
-    TCHAR command[TAM];
-}CELULA_BUFFER;
-typedef struct BUFFER_CIRCULAR {
-    DWORD dwNumProd;
-    DWORD dwNumCons;
-    DWORD dwPosE;//proxima posicao de escrita
-    DWORD dwPosL;//proxima posicao de leitura
-
-    CELULA_BUFFER buffer[TAM_BUF];
-}BUFFER_CIRCULAR;
 
 //estrutura de apoio
 typedef struct DADOS_THREAD {
@@ -116,24 +121,22 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
 }
 
 DWORD WINAPI ThreadConsumidor(LPVOID param) {
-    DADOS_THREAD* dados = (DADOS_THREAD*)param;
+    GAME* game = (GAME*)param;
     CELULA_BUFFER cel;
-    int contador = 0;
-    int soma = 0;
 
-    while (!dados->dwTerminar) {
-        WaitForSingleObject(dados->hSemLeitura, INFINITE);
-        WaitForSingleObject(dados->hMutex, INFINITE);
+    while (!game->dwShutDown) {
+        WaitForSingleObject(game->hSemLeitura, INFINITE);
+        WaitForSingleObject(game->hMutex, INFINITE);
 
-        CopyMemory(&cel, &dados->memPartilhada->buffer[dados->memPartilhada->dwPosL], sizeof(CELULA_BUFFER));
-        dados->memPartilhada->dwPosL++; //incrementamos a posicao de leitura para o proximo consumidor ler na posicao seguinte
+        CopyMemory(&cel, &game->sharedMemory->bufferCircular.buffer[game->sharedMemory->bufferCircular.dwPosL], sizeof(CELULA_BUFFER));
+        game->sharedMemory->bufferCircular.dwPosL++; //incrementamos a posicao de leitura para o proximo consumidor ler na posicao seguinte
 
         //se apos o incremento a posicao de leitura chegar ao fim, tenho de voltar ao inicio
-        if (dados->memPartilhada->dwPosL == TAM_BUF)
-            dados->memPartilhada->dwPosL = 0;
+        if (game->sharedMemory->bufferCircular.dwPosL == TAM_BUF)
+            game->sharedMemory->bufferCircular.dwPosL = 0;
         _tprintf(_T("\nRecebi: %s"), cel.command);
-        ReleaseMutex(dados->hMutex);
-        ReleaseSemaphore(dados->hSemEscrita, 1, NULL);
+        ReleaseMutex(game->hMutex);
+        ReleaseSemaphore(game->hSemEscrita, 1, NULL);
     }
     ExitThread(0);
 }
@@ -191,8 +194,8 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         for (int i = 0; i < game->dwInitNumOfRoads; i++) {
             for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
                 OBJECT obj = game->roads[i].cars[j];
-                game->sharedBoard->board[obj.dwY][obj.dwX] = obj.c;
-                game->sharedBoard->board[obj.dwLastY][obj.dwLastX] = _T(' ');
+                game->sharedMemory->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
+                game->sharedMemory->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
             }
         }
     }
@@ -229,26 +232,26 @@ void moveObject(OBJECT* objData, WAY way) {
     objData->dwLastY = objData->dwY;
 
     switch (way) {
-    case UP: {
-        if (objData->dwY - 1 < 0)break;
-        objData->dwY--;
-        break;
-    }
-    case DOWN: {
-        if (objData->dwY + 1 > MAX_ROADS)break;
-        objData->dwY++;
-        break;
-    }
-    case LEFT: {
-        if (objData->dwX - 1 <= 0) objData->dwX = MAX_WIDTH;
-        objData->dwX--;
-        break;
-    }
-    case RIGHT: {
-        if (objData->dwX + 1 > MAX_WIDTH) objData->dwX = 0;
-        objData->dwX++;
-        break;
-    }
+        case UP: {
+            if (objData->dwY - 1 < 0)break;
+            objData->dwY--;
+            break;
+        }
+        case DOWN: {
+            if (objData->dwY + 1 > MAX_ROADS)break;
+            objData->dwY++;
+            break;
+        }
+        case LEFT: {
+            if (objData->dwX - 1 <= 0) objData->dwX = MAX_WIDTH;
+            objData->dwX--;
+            break;
+        }
+        case RIGHT: {
+            if (objData->dwX + 1 > MAX_WIDTH) objData->dwX = 0;
+            objData->dwX++;
+            break;
+        }
     }
 
 }
@@ -327,37 +330,35 @@ void initRoads(ROAD* roads, DWORD dwNumOfRoads, DWORD dwInitSpeed) {
         }
     }
 }
-void initBufCir(DADOS_THREAD* dadosThread, HANDLE hFileMap) {
-    dadosThread->hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
-    dadosThread->hSemLeitura = CreateSemaphore(NULL, 0, 1, READ_SEMAPHORE);
-    dadosThread->hMutex = CreateMutex(NULL, FALSE, MUTEX_CONSUMIDOR);
+void initBufCir(GAME* game) {
+    game->hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
+    game->hSemLeitura = CreateSemaphore(NULL, 0, 1, READ_SEMAPHORE);
+    game->hMutex = CreateMutex(NULL, FALSE, MUTEX_CONSUMIDOR);
 
-    if (dadosThread->hSemEscrita == NULL || dadosThread->hSemLeitura == NULL || dadosThread->hMutex == NULL) {
+    if (game->hSemEscrita == NULL || game->hSemLeitura == NULL || game->hMutex == NULL) {
         _tprintf(TEXT("Erro no CreateSemaphore ou no CreateMutex\n"));
         exit(-1);
     }
 
-    dadosThread->memPartilhada->dwNumCons = 0;
-    dadosThread->memPartilhada->dwNumProd = 0;
-    dadosThread->memPartilhada->dwPosE = 0;
-    dadosThread->memPartilhada->dwPosL = 0;
+    game->sharedMemory->bufferCircular.dwNumCons = 0;
+    game->sharedMemory->bufferCircular.dwNumProd = 0;
+    game->sharedMemory->bufferCircular.dwPosE = 0;
+    game->sharedMemory->bufferCircular.dwPosL = 0;
 
-    dadosThread->dwTerminar = 0;
+    game->dwShutDown = 0;
     //temos de usar o mutex para aumentar o nConsumidores para termos os ids corretos
-    WaitForSingleObject(dadosThread->hMutex, INFINITE);
-    dadosThread->memPartilhada->dwNumCons++;
-    dadosThread->dwId = dadosThread->memPartilhada->dwNumCons;
-    ReleaseMutex(dadosThread->hMutex);
+    WaitForSingleObject(game->hMutex, INFINITE);
+    game->sharedMemory->bufferCircular.dwNumCons++;
+    ReleaseMutex(game->hMutex);
 
 
 }
 int _tmain(int argc, TCHAR* argv[]) {
     HANDLE hExistServer, hUpdateEvent, hExitEvent;
-    HANDLE hFileMap, hFileMapBufCir;
+    HANDLE hFileMap;
     HANDLE hUpdateThread, hCMDThread, hThreadConsumidor;
     HANDLE hMutexRoad;
     GAME game;
-    DADOS_THREAD dadosThread;
 #ifdef UNICODE 
     _setmode(_fileno(stdin), _O_WTEXT);
     _setmode(_fileno(stdout), _O_WTEXT);
@@ -382,53 +383,33 @@ int _tmain(int argc, TCHAR* argv[]) {
     }
 
     //Memoria partilhada
-    hFileMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, BOARD_SHARED_MEMORY);
+    hFileMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, SHARED_MEMORY_NAME);
     if (hFileMap == NULL) {
         hFileMap = CreateFileMapping(
             INVALID_HANDLE_VALUE,
             NULL,
             PAGE_READWRITE,
             0,
-            sizeof(SHARED_BOARD),
-            BOARD_SHARED_MEMORY);
+            sizeof(SHARED_MEMORY),
+            SHARED_MEMORY_NAME);
 
         if (hFileMap == NULL) {
             _tprintf(TEXT("Erro no CreateFileMapping\n"));
             return -1;
         }
     }
-    game.sharedBoard = (SHARED_BOARD*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(SHARED_BOARD));
-    if (game.sharedBoard == NULL) {
+    game.sharedMemory = (SHARED_MEMORY*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+    if (game.sharedMemory == NULL) {
         _tprintf(_T("Erro no mapviewoffile\n"));
-        exit(-1);
-    }
-    hFileMapBufCir = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, CMD_FILE_MAP);
-    if (hFileMapBufCir == NULL) {
-        hFileMapBufCir = CreateFileMapping(
-            INVALID_HANDLE_VALUE,
-            NULL,
-            PAGE_READWRITE,
-            0,
-            sizeof(BUFFER_CIRCULAR),
-            CMD_FILE_MAP);
-
-        if (hFileMapBufCir == NULL) {
-            _tprintf(TEXT("Erro no CreateFileMapping\n"));
-            return -1;
-        }
-    }
-    dadosThread.memPartilhada = (BUFFER_CIRCULAR*)MapViewOfFile(hFileMapBufCir, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-    if (dadosThread.memPartilhada == NULL) {
-        _tprintf(TEXT("Erro no MapViewOfFile\n"));
         exit(-1);
     }
     //inicializacao
     game.dwShutDown = 0;
     game.dwLevel = 1;
     initRegestry(&game);
-    initSharedBoard(game.sharedBoard, game.dwInitNumOfRoads + 4);
+    initSharedBoard(&game.sharedMemory->sharedBoard, game.dwInitNumOfRoads + 4);
     initRoads(game.roads, game.dwInitNumOfRoads, game.dwInitSpeed);
-    initBufCir(&dadosThread, hFileMapBufCir);
+    initBufCir(&game);
 
     hMutexRoad = CreateMutex(NULL, FALSE, MUTEX_ROAD);
     for (int i = 0; i < game.dwInitNumOfRoads; i++) {
@@ -439,14 +420,13 @@ int _tmain(int argc, TCHAR* argv[]) {
     //threads
     hCMDThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CMDThread, (LPVOID)&game, 0, NULL);
     hUpdateThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UpdateThread, (LPVOID)&game, 0, NULL);
-    hThreadConsumidor = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&dadosThread, 0, NULL);
+    hThreadConsumidor = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game, 0, NULL);
     WaitForSingleObject(hUpdateThread, INFINITE);
     WaitForSingleObject(hCMDThread, INFINITE);
 
     SetEvent(hExitEvent);
-    UnmapViewOfFile(game.sharedBoard);
+    UnmapViewOfFile(game.sharedMemory);
     CloseHandle(hFileMap);
-    CloseHandle(hFileMapBufCir);
     CloseHandle(game.hKey);
     CloseHandle(hExitEvent);
     CloseHandle(hMutexRoad);
