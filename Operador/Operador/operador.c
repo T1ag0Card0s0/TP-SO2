@@ -6,8 +6,6 @@
 #include <windows.h>
 #include <time.h>
 
-
-
 #define TAM 200
 #define TAM_BUF 10
 
@@ -70,16 +68,15 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
     }
 }
 
-DWORD WINAPI ReadSharedMemory(LPVOID param) {
+DWORD WINAPI ShowBoard(LPVOID param) {
 
     SHARED_BOARD* sharedBoard = (SHARED_BOARD*)param;
 
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
     if (hEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
-        ExitThread(7);
+        ExitThread(-1);
     }
-
     COORD pos = { 0,1 };
     DWORD written;
     while (TRUE) {
@@ -116,7 +113,6 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
     COORD pos = { 0,0 };
     DWORD written;
     CELULA_BUFFER cel;
-
     while (!dados->terminar) {
         cel.id = dados->id;
         fflush(stdin); fflush(stdout);
@@ -124,15 +120,12 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
         FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
         _tprintf(_T("[OPERADOR]$ "));
         _fgetts(cel.str, 100, stdin);
-        //aqui entramos na logica da aula teorica
 
         //esperamos por uma posicao para escrevermos
         WaitForSingleObject(dados->hSemEscrita, INFINITE);
-
         //esperamos que o mutex esteja livre
         WaitForSingleObject(dados->hMutex, INFINITE);
 
-        //vamos copiar a variavel cel para a memoria partilhada (para a posi??o de escrita)
         CopyMemory(&dados->sharedMemory->bufferCircular.buffer[dados->sharedMemory->bufferCircular.posE], &cel, sizeof(CELULA_BUFFER));
         dados->sharedMemory->bufferCircular.posE++; //incrementamos a posicao de escrita para o proximo produtor escrever na posicao seguinte
 
@@ -142,11 +135,8 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
 
         //libertamos o mutex
         ReleaseMutex(dados->hMutex);
-
-        //libertamos o semaforo. temos de libertar uma posicao de leitura
+        //libertamos o semaforo para leitura
         ReleaseSemaphore(dados->hSemLeitura, 1, NULL);
-
-
     }
 
     return 0;
@@ -155,74 +145,40 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
 int _tmain(int argc, TCHAR* argv[])
 {
     DWORD initX = 0, initY = 0;
-    HANDLE hReadTh;
+    HANDLE hShowBoardTh;
     HANDLE hServerTh;
     HANDLE hThreadProdutor;
     HANDLE hFileMap;
     SHARED_DATA dados;
-    BOOL primeiroProcesso = FALSE;
 
 
 #ifdef UNICODE
     _setmode(_fileno(stdin), _O_WTEXT);
     _setmode(_fileno(stdout), _O_WTEXT);
 #endif
-
-    srand((unsigned int)time(NULL));
-
+    srand(time(NULL));
     //criar semaforo que conta as escritas
     dados.hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
-
-    //criar semaforo que conta as leituras
-    //0 porque nao ha nada para ser lido e depois podemos ir at? um maximo de 10 posicoes para serem lidas
-    dados.hSemLeitura = CreateSemaphore(NULL, 0, TAM_BUF, READ_SEMAPHORE);
-
+    //criar um semafro para a leitura
+    dados.hSemLeitura = CreateSemaphore(NULL, 0, 1, READ_SEMAPHORE);
     //criar mutex para os produtores
     dados.hMutex = CreateMutex(NULL, FALSE, MUTEX_PROD);
-
     if (dados.hSemEscrita == NULL || dados.hSemLeitura == NULL || dados.hMutex == NULL) {
         _tprintf(TEXT("Erro no CreateSemaphore ou no CreateMutex\n"));
         return -1;
     }
 
-    //o openfilemapping vai abrir um filemapping com o nome que passamos no lpName
-    //se devolver um HANDLE ja existe e nao fazemos a inicializacao
-    //se devolver NULL nao existe e vamos fazer a inicializacao
-
     hFileMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, SHARED_MEMORY_NAME);
     if (hFileMap == NULL) {
-        primeiroProcesso = TRUE;
-        //criamos o bloco de memoria partilhada
-        hFileMap = CreateFileMapping(
-            INVALID_HANDLE_VALUE,
-            NULL,
-            PAGE_READWRITE,
-            0,
-            sizeof(SHARED_MEMORY), //tamanho da memoria partilhada
-            SHARED_MEMORY_NAME);//nome do filemapping. nome que vai ser usado para partilha entre processos
-
-        if (hFileMap == NULL) {
-            _tprintf(TEXT("Erro no CreateFileMapping\n"));
-            return -1;
-        }
+        _tprintf(_T("Erro a abrir o fileMapping \n"));
+        return -1;
     }
-
     //mapeamos o bloco de memoria para o espaco de endera?amento do nosso processo
     dados.sharedMemory = (SHARED_MEMORY*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-
-
     if (dados.sharedMemory == NULL) {
         _tprintf(TEXT("Erro no MapViewOfFile\n"));
         return -1;
     }
-
-    if (primeiroProcesso == TRUE) {
-        dados.sharedMemory->bufferCircular.nConsumidores = 0;
-        dados.sharedMemory->bufferCircular.nProdutores = 0;
-        dados.sharedMemory->bufferCircular.posE = 0;
-        dados.sharedMemory->bufferCircular.posL = 0;
-    }
-
 
     dados.terminar = 0;
 
@@ -232,16 +188,15 @@ int _tmain(int argc, TCHAR* argv[])
     dados.id = dados.sharedMemory->bufferCircular.nProdutores;
     ReleaseMutex(dados.hMutex);
 
-
     //lancamos a thread
-    hReadTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadSharedMemory, (LPVOID)&dados.sharedMemory->sharedBoard, 0, NULL);
+    hShowBoardTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ShowBoard, (LPVOID)&dados.sharedMemory->sharedBoard, 0, NULL);
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
     hThreadProdutor = CreateThread(NULL, 0, ThreadProdutor, &dados, 0, NULL);
 
     WaitForSingleObject(hServerTh, INFINITE);
 
     UnmapViewOfFile(dados.sharedMemory);
-    CloseHandle(hReadTh);
+    CloseHandle(hShowBoardTh);
     CloseHandle(hServerTh);
     ExitProcess(0);
     return 0;
