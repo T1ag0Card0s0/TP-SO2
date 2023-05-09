@@ -6,7 +6,6 @@
 #include <windows.h>
 #include <time.h>
 
-
 #define TAM 256
 #define TAM_BUF 10
 
@@ -14,14 +13,14 @@
 #define MAX_WIDTH 20
 #define MAX_CARS_PER_ROAD 8
 
-#define MUTEX_SERVER _T("Server")
-#define SHARED_MEMORY_NAME _T("ShareMemory")
 #define EXIT_EVENT _T("ExitEvent")
 #define UPDATE_EVENT _T("UpdateEvent")
-#define MUTEX_ROAD _T("MutexRoad")
 #define WRITE_SEMAPHORE _T("WriteSemaphore")
 #define READ_SEMAPHORE _T("ReadSemaphore")
 #define MUTEX_CONSUMIDOR _T("MutexConsumidor")
+#define MUTEX_SERVER _T("Server")
+#define MUTEX_ROAD _T("MutexRoad")
+#define SHARED_MEMORY_NAME _T("ShareMemory")
 
 #define KEY_SPEED TEXT("Speed")
 #define KEY_ROADS TEXT("Roads")
@@ -121,16 +120,11 @@ DWORD WINAPI ThreadConsumidor(LPVOID param) {
     CELULA_BUFFER cel;
 
     while (!dados->terminar) {
-        //aqui entramos na logica da aula teorica
-
         //esperamos por uma posicao para lermos
         WaitForSingleObject(dados->hSemLeitura, INFINITE);
-
         //esperamos que o mutex esteja livre
         WaitForSingleObject(dados->hMutex, INFINITE);
 
-
-        //vamos copiar da proxima posicao de leitura do buffer circular para a nossa variavel cel
         CopyMemory(&cel, &dados->memPar->bufferCircular.buffer[dados->memPar->bufferCircular.posL], sizeof(CELULA_BUFFER));
         dados->memPar->bufferCircular.posL++; //incrementamos a posicao de leitura para o proximo consumidor ler na posicao seguinte
 
@@ -140,13 +134,11 @@ DWORD WINAPI ThreadConsumidor(LPVOID param) {
 
         //libertamos o mutex
         ReleaseMutex(dados->hMutex);
-
         //libertamos o semaforo. temos de libertar uma posicao de escrita
         ReleaseSemaphore(dados->hSemEscrita, 1, NULL);
 
-        _tprintf(TEXT("Recebi %s\n"), cel.str);
+        _tprintf(TEXT("\nRecebi %s\n"), cel.str);
     }
-
 
     return 0;
 }
@@ -201,18 +193,23 @@ DWORD WINAPI UpdateThread(LPVOID param) {
     GAME* game = (GAME*)param;
 
     while (!game->dwShutDown) {
-        if (game->dwInitNumOfRoads != game->sharedData.memPar->sharedBoard.dwHeight - 4) {
+        if (game->dwInitNumOfRoads != game->sharedData.memPar->sharedBoard.dwHeight - 4 ||
+            game->dwInitSpeed * 100 != game->roads[0].dwSpeed) {
             initSharedBoard(&game->sharedData.memPar->sharedBoard, game->dwInitNumOfRoads + 4);
-        }
-        else {
             for (int i = 0; i < game->dwInitNumOfRoads; i++) {
-                for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
-                    OBJECT obj = game->roads[i].cars[j];
-                    game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
-                    game->sharedData.memPar->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
-                }
+                game->roads[i].dwSpeed = game->dwInitSpeed * 100;
+            }
+            continue;
+        }
+
+        for (int i = 0; i < game->dwInitNumOfRoads; i++) {
+            for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
+                OBJECT obj = game->roads[i].cars[j];
+                game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
+                game->sharedData.memPar->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
             }
         }
+
     }
     ExitThread(0);
 }
@@ -273,7 +270,6 @@ void moveObject(OBJECT* objData, WAY way) {
 void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight) {
     sharedBoard->dwHeight = dwHeight;
     sharedBoard->dwWidth = MAX_WIDTH;
-
     for (int i = 0; i < sharedBoard->dwHeight; i++) {
         for (int j = 0; j < sharedBoard->dwWidth; j++) {
             if (i == 1 || i == sharedBoard->dwHeight - 2) {
@@ -358,77 +354,60 @@ int _tmain(int argc, TCHAR* argv[])
     _setmode(_fileno(stdin), _O_WTEXT);
     _setmode(_fileno(stdout), _O_WTEXT);
 #endif
+    //Controla quantos servidores podem correr
     hExistServer = CreateMutex(NULL, TRUE, MUTEX_SERVER);
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         _tprintf(_T("[ERRO] Ja existe um servidor a correr\n"));
         ExitProcess(1);
     }
+    //Evento para assinalar os operadores que o servidor fechou
     hExitEvent = CreateEvent(NULL, TRUE, FALSE, EXIT_EVENT);
     if (hExitEvent == NULL) {
         _tprintf(_T("[ERRO] Evento não criado\n\n"));
         ExitProcess(1);
     }
     srand(time(NULL));
+    //Evento para assinalar que houve uma atualização do 'tabuleiro'
     hUpdateEvent = CreateEvent(NULL, TRUE, FALSE, UPDATE_EVENT);
     if (hUpdateEvent == NULL) {
         _tprintf(_T("[ERRO] Evento não criado\n\n"));
-        exit(-1);
+        ExitProcess(1);
     }
 
     //criar semaforo que conta as escritas
     game.sharedData.hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
-
-    //criar semaforo que conta as leituras
-    //0 porque nao ha nada para ser lido e depois podemos ir at? um maximo de 10 posicoes para serem lidas
-    game.sharedData.hSemLeitura = CreateSemaphore(NULL, 0, TAM_BUF, READ_SEMAPHORE);
-
-    //criar mutex para os produtores
+    //criar semaforo que controla a leitura
+    game.sharedData.hSemLeitura = CreateSemaphore(NULL, 0, 1, READ_SEMAPHORE);
     game.sharedData.hMutex = CreateMutex(NULL, FALSE, MUTEX_CONSUMIDOR);
-
     if (game.sharedData.hSemEscrita == NULL || game.sharedData.hSemLeitura == NULL || game.sharedData.hMutex == NULL) {
         _tprintf(TEXT("Erro no CreateSemaphore ou no CreateMutex\n"));
         return -1;
     }
 
-    //o openfilemapping vai abrir um filemapping com o nome que passamos no lpName
-    //se devolver um HANDLE ja existe e nao fazemos a inicializacao
-    //se devolver NULL nao existe e vamos fazer a inicializacao
 
-    hFileMap = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, SHARED_MEMORY_NAME);
+    hFileMap = CreateFileMapping(
+        INVALID_HANDLE_VALUE,
+        NULL,
+        PAGE_READWRITE,
+        0,
+        sizeof(SHARED_MEMORY), //tamanho da memoria partilhada
+        SHARED_MEMORY_NAME);//nome do filemapping. nome que vai ser usado para partilha entre processos
     if (hFileMap == NULL) {
-        primeiroProcesso = TRUE;
-        //criamos o bloco de memoria partilhada
-        hFileMap = CreateFileMapping(
-            INVALID_HANDLE_VALUE,
-            NULL,
-            PAGE_READWRITE,
-            0,
-            sizeof(SHARED_MEMORY), //tamanho da memoria partilhada
-            SHARED_MEMORY_NAME);//nome do filemapping. nome que vai ser usado para partilha entre processos
-
-        if (hFileMap == NULL) {
-            _tprintf(TEXT("Erro no CreateFileMapping\n"));
-            return -1;
-        }
+        _tprintf(TEXT("Erro no CreateFileMapping\n"));
+        return -1;
     }
 
-    //mapeamos o bloco de memoria para o espaco de endera?amento do nosso processo
     game.sharedData.memPar = (SHARED_MEMORY*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-
 
     if (game.sharedData.memPar == NULL) {
         _tprintf(TEXT("Erro no MapViewOfFile\n"));
         return -1;
     }
 
-    if (primeiroProcesso == TRUE) {
-        game.sharedData.memPar->bufferCircular.nConsumidores = 0;
-        game.sharedData.memPar->bufferCircular.nProdutores = 0;
-        game.sharedData.memPar->bufferCircular.posE = 0;
-        game.sharedData.memPar->bufferCircular.posL = 0;
-    }
-
-
+    game.sharedData.memPar->bufferCircular.nConsumidores = 0;
+    game.sharedData.memPar->bufferCircular.nProdutores = 0;
+    game.sharedData.memPar->bufferCircular.posE = 0;
+    game.sharedData.memPar->bufferCircular.posL = 0;
     game.sharedData.terminar = 0;
 
     //temos de usar o mutex para aumentar o nConsumidores para termos os ids corretos
@@ -436,12 +415,15 @@ int _tmain(int argc, TCHAR* argv[])
     game.sharedData.memPar->bufferCircular.nConsumidores++;
     game.sharedData.id = game.sharedData.memPar->bufferCircular.nConsumidores;
     ReleaseMutex(game.sharedData.hMutex);
+
+
     game.dwShutDown = 0;
     game.dwLevel = 1;
     initRegestry(&game);
     initSharedBoard(&game.sharedData.memPar->sharedBoard, game.dwInitNumOfRoads + 4);
     initRoads(game.roads, game.dwInitSpeed);
 
+    //lançamos as estradas ao mesmo tempo
     hMutexRoad = CreateMutex(NULL, FALSE, MUTEX_ROAD);
     for (int i = 0; i < MAX_ROADS; i++) {
         game.roads[i].hMutex = hMutexRoad;
@@ -456,7 +438,7 @@ int _tmain(int argc, TCHAR* argv[])
     WaitForSingleObject(hUpdateThread, INFINITE);
     WaitForSingleObject(hCMDThread, INFINITE);
 
-
+    UnmapViewOfFile(game.sharedData.memPar);
     SetEvent(hExitEvent);
     CloseHandle(hFileMap);
     CloseHandle(game.hKey);
@@ -465,9 +447,5 @@ int _tmain(int argc, TCHAR* argv[])
     CloseHandle(hUpdateEvent);
     CloseHandle(hExistServer);
 
-    UnmapViewOfFile(game.sharedData.memPar);
-    //CloseHandles ... mas ? feito automaticamente quando o processo termina
-
     return 0;
-
 }

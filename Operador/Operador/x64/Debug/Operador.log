@@ -1,4 +1,5 @@
 ﻿  operador.c
-C:\SO2\TP-SO2\Operador\Operador\operador.c(82,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Operador\Operador\operador.c(157,22): warning C4098: 'initDadosThread': função 'void' retornando um valor
+C:\SO2\TP-SO2\Operador\Operador\operador.c(85,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Operador\Operador\operador.c(159,11): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
+  LINK : C:\SO2\TP-SO2\Operador\x64\Debug\Operador.exe não encontrado ou não compilado pelo o último link incremental; executando link completo
   Operador.vcxproj -> C:\SO2\TP-SO2\Operador\x64\Debug\Operador.exe
