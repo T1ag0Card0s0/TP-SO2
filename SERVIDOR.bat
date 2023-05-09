@@ -1,1 +1,0 @@
-start cmd /k ".\Servidor\x64\Debug\Servidor.exe"

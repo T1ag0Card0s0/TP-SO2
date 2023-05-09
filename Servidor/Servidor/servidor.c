@@ -397,6 +397,7 @@ int _tmain(int argc, TCHAR* argv[])
         return -1;
     }
 
+
     game.sharedData.memPar = (SHARED_MEMORY*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 
     if (game.sharedData.memPar == NULL) {
