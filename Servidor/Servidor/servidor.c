@@ -12,6 +12,7 @@
 #define MAX_ROADS 8
 #define MAX_WIDTH 20
 #define MAX_CARS_PER_ROAD 8
+#define MAX_PLAYERS 2
 
 #define EXIT_EVENT _T("ExitEvent")
 #define UPDATE_EVENT _T("UpdateEvent")
@@ -30,18 +31,11 @@
 #define CAR _T('C')
 #define FROG _T('F')
 
-typedef struct SHARED_BOARD {
-    DWORD dwWidth;
-    DWORD dwHeight;
-
-    TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
-}SHARED_BOARD;
 //estrutura para o buffer circular
 typedef struct CELULA_BUFFER {
     int id;
     TCHAR str[100];
 }CELULA_BUFFER;
-
 //representa a nossa memoria partilhada
 typedef struct BUFFER_CIRCULAR {
     int nProdutores;
@@ -50,6 +44,14 @@ typedef struct BUFFER_CIRCULAR {
     int posL; //proxima posicao de leitura
     CELULA_BUFFER buffer[TAM_BUF]; //buffer circular em si (array de estruturas)
 }BUFFER_CIRCULAR;
+
+typedef struct SHARED_BOARD {
+    DWORD dwWidth;
+    DWORD dwHeight;
+
+    TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
+}SHARED_BOARD;
+
 typedef struct SHARED_MEMORY {
     BUFFER_CIRCULAR bufferCircular;
     SHARED_BOARD sharedBoard;
@@ -60,10 +62,9 @@ typedef struct SHARED_DATA {
     HANDLE hSemEscrita; //handle para o semaforo que controla as escritas (controla quantas posicoes estao vazias)
     HANDLE hSemLeitura; //handle para o semaforo que controla as leituras (controla quantas posicoes estao preenchidas)
     HANDLE hMutex;
-    int terminar; // 1 para sair, 0 em caso contr?rio
+    int terminar; // 1 para sair, 0 em caso contrario
     int id;
 }SHARED_DATA;
-
 
 typedef enum WAY { UP, DOWN, LEFT, RIGHT, STOP }WAY;
 typedef struct OBJECT {
@@ -75,10 +76,12 @@ typedef struct ROAD {
     DWORD dwNumOfCars;
     DWORD dwSpaceBetween;
     DWORD dwSpeed;
+    DWORD dwTimeStoped;
 
     HANDLE hMutex;
     HANDLE hThread;
 
+    WAY lastWay;
     WAY way;
 
     OBJECT cars[MAX_CARS_PER_ROAD];
@@ -88,10 +91,12 @@ typedef struct GAME {
     DWORD dwLevel;
     DWORD dwShutDown;
     DWORD dwInitSpeed, dwInitNumOfRoads;
+    BOOL  bPaused;
 
     HANDLE hKey;
 
     SHARED_DATA sharedData;
+    OBJECT players[MAX_PLAYERS];
     ROAD roads[MAX_ROADS];
 }GAME;
 
@@ -99,7 +104,8 @@ void initRoads(ROAD* roads, DWORD dwNumOfRoads);
 void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight);
 void initRegestry(GAME* data);
 void moveObject(OBJECT* objData, WAY way);
-
+void commandExecutor(TCHAR command[], ROAD* road);
+void initPlayers(OBJECT* players, DWORD dwNumRoads);
 //Posicionamento de cursor
 void GoToXY(int column, int line) {//coloca o cursor no local desejado
     COORD coord = { column,line };
@@ -116,7 +122,8 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
 }
 
 DWORD WINAPI ThreadConsumidor(LPVOID param) {
-    SHARED_DATA* dados = (SHARED_DATA*)param;
+    GAME* game = (GAME*)param;
+    SHARED_DATA* dados = &(game->sharedData);
     CELULA_BUFFER cel;
 
     while (!dados->terminar) {
@@ -127,7 +134,6 @@ DWORD WINAPI ThreadConsumidor(LPVOID param) {
 
         CopyMemory(&cel, &dados->memPar->bufferCircular.buffer[dados->memPar->bufferCircular.posL], sizeof(CELULA_BUFFER));
         dados->memPar->bufferCircular.posL++; //incrementamos a posicao de leitura para o proximo consumidor ler na posicao seguinte
-
         //se apos o incremento a posicao de leitura chegar ao fim, tenho de voltar ao inicio
         if (dados->memPar->bufferCircular.posL == TAM_BUF)
             dados->memPar->bufferCircular.posL = 0;
@@ -137,10 +143,10 @@ DWORD WINAPI ThreadConsumidor(LPVOID param) {
         //libertamos o semaforo. temos de libertar uma posicao de escrita
         ReleaseSemaphore(dados->hSemEscrita, 1, NULL);
 
-        _tprintf(TEXT("\nRecebi %s\n"), cel.str);
+        commandExecutor(cel.str, game->roads);
     }
 
-    return 0;
+    ExitThread(0);
 }
 
 DWORD WINAPI CMDThread(LPVOID param) {
@@ -180,9 +186,30 @@ DWORD WINAPI CMDThread(LPVOID param) {
             if (RegSetValueEx(game->hKey, KEY_SPEED, 0, REG_DWORD, (LPCBYTE)&value, sizeof(value)) != ERROR_SUCCESS)
                 _tprintf(TEXT("[AVISO] O atributo nao foi alterado nem criado!\n"));
         }
+        else if (!_tcscmp(cmd, _T("pause"))) {
+            if (game->bPaused)continue;
+            game->bPaused = TRUE;
+            for (int i = 0; i < MAX_ROADS; i++) {
+                game->roads[i].lastWay = game->roads[i].way;
+                game->roads[i].way = STOP;
+            }
+        }
+        else if (!_tcscmp(cmd, _T("unpause"))) {
+            if (!game->bPaused)continue;
+            game->bPaused = FALSE;
+            for (int i = 0; i < MAX_ROADS; i++) {
+                game->roads[i].way = game->roads[i].lastWay;
+            }
+        }
+        else if (!_tcscmp(cmd, _T("restart"))) {
+            //implementar o comando restart
+        }
         else if (!(_tcscmp(cmd, _T("help")))) {
             _tprintf(_T("\n-- setv x : definir a velocidade dos carros ( x inteiro maior que 1)"));
             _tprintf(_T("\n-- setf x : definir o numero de faixas ( x inteiro entre 1 e 8)"));
+            _tprintf(_T("\n-- pause : pausar o jogo"));
+            _tprintf(_T("\n-- unpause : resumir o jogo"));
+            _tprintf(_T("\n-- restart : recomeçar o jogo"));
             _tprintf(_T("\n-- exit : sair\n\n"));
         }
     }
@@ -191,40 +218,55 @@ DWORD WINAPI CMDThread(LPVOID param) {
 }
 DWORD WINAPI UpdateThread(LPVOID param) {
     GAME* game = (GAME*)param;
-
+    int i, j;
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
+    if (hEvent == NULL) {
+        _tprintf(_T("Erro a abrir o evento\n\n"));
+        ExitThread(-1);
+    }
     while (!game->dwShutDown) {
+        WaitForSingleObject(hEvent, INFINITE);
         if (game->dwInitNumOfRoads != game->sharedData.memPar->sharedBoard.dwHeight - 4 ||
             game->dwInitSpeed * 100 != game->roads[0].dwSpeed) {
             initSharedBoard(&game->sharedData.memPar->sharedBoard, game->dwInitNumOfRoads + 4);
             for (int i = 0; i < game->dwInitNumOfRoads; i++) {
                 game->roads[i].dwSpeed = game->dwInitSpeed * 100;
             }
+            initPlayers(game->players, game->dwInitNumOfRoads);
             continue;
         }
 
-        for (int i = 0; i < game->dwInitNumOfRoads; i++) {
-            for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
+        for (i = 0; i < game->dwInitNumOfRoads; i++) {
+            for (j = 0; j < game->roads[i].dwNumOfCars; j++) {
                 OBJECT obj = game->roads[i].cars[j];
                 game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
                 game->sharedData.memPar->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
             }
         }
+        for (i = 0; i < MAX_PLAYERS; i++) {
+            game->sharedData.memPar->sharedBoard.board[game->players[i].dwY][game->players[i].dwX] = game->players[i].c;
+        }
+        ResetEvent(hEvent);
 
     }
     ExitThread(0);
 }
 
 DWORD WINAPI RoadMove(LPVOID param) {
-
     ROAD* road = (ROAD*)param;
 
     HANDLE hUpdateEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
     if (hUpdateEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
-        ExitThread(7);
+        ExitThread(-1);
     }
     int runningCars = 0, numSteps = 0;
     while (TRUE) {
+        if (road->dwTimeStoped > 0) {
+            Sleep(road->dwTimeStoped * 1000);
+            road->dwTimeStoped = 0;
+            road->way = road->lastWay;
+        }
         WaitForSingleObject(road->hMutex, INFINITE);
         if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars) { numSteps = 0; runningCars++; }
         for (int i = 0; i < runningCars; i++) {
@@ -239,17 +281,19 @@ DWORD WINAPI RoadMove(LPVOID param) {
 }
 
 void moveObject(OBJECT* objData, WAY way) {
-    objData->dwLastX = objData->dwX;
-    objData->dwLastY = objData->dwY;
+    if (way != STOP) {
+        objData->dwLastX = objData->dwX;
+        objData->dwLastY = objData->dwY;
+    }
 
     switch (way) {
     case UP: {
-        if (objData->dwY - 1 < 0)break;
+        if (objData->dwY - 1 <= 0)break;
         objData->dwY--;
         break;
     }
     case DOWN: {
-        if (objData->dwY + 1 > MAX_ROADS)break;
+        if (objData->dwY + 1 >= MAX_ROADS)break;
         objData->dwY++;
         break;
     }
@@ -265,6 +309,26 @@ void moveObject(OBJECT* objData, WAY way) {
     }
     }
 
+}
+void commandExecutor(TCHAR command[], ROAD* road) {
+    TCHAR cmd[TAM];
+    DWORD index;
+    _stscanf_s(command, _T("%s %u"), cmd, TAM, &index);
+    if (index<0 || index>MAX_ROADS) return;
+    if (!_tcscmp(cmd, _T("pause"))) {
+        DWORD value;
+        _stscanf_s(command, _T("%s %u %u"), cmd, TAM, &index, &value);
+        road[index].lastWay = road[index].way;
+        road[index].way = STOP;
+        road[index].dwTimeStoped = value;
+    }
+    else if (!_tcscmp(cmd, _T("insert"))) {
+
+    }
+    else if (!_tcscmp(cmd, _T("invert"))) {
+        if (road[index].way == LEFT)road[index].way = RIGHT;
+        else if (road[index].way == RIGHT)road[index].way = LEFT;
+    }
 }
 
 void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight) {
@@ -324,12 +388,12 @@ void initRegestry(GAME* data) {
     }
 }
 void initRoads(ROAD* roads, DWORD dwInitSpeed) {
-
     for (int i = 0; i < MAX_ROADS; i++) {
         roads[i].dwNumOfCars = rand() % MAX_CARS_PER_ROAD + 1;
         roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / MAX_CARS_PER_ROAD) + 2;
         roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
         roads[i].dwSpeed = dwInitSpeed * 100;
+        roads[i].dwTimeStoped = 0;
         roads[i].hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoadMove, (LPVOID)&roads[i], CREATE_SUSPENDED, NULL);
         for (int j = 0; j < roads[i].dwNumOfCars; j++) {
             roads[i].cars[j].c = CAR;
@@ -341,15 +405,25 @@ void initRoads(ROAD* roads, DWORD dwInitSpeed) {
     }
 }
 
+void initPlayers(OBJECT* players, DWORD dwNumRoads) {
+    int xRepeated = -1;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        players[i].c = FROG;
+        players[i].dwX = rand() % MAX_WIDTH;
+        if (xRepeated == -1) xRepeated = players[i].dwX;
+        else if (players[i].dwX == xRepeated) players[i].dwX = ++xRepeated;
+        players[i].dwY = dwNumRoads + 3;
+        players[i].dwLastX = players[i].dwX;
+        players[i].dwLastY = players[i].dwY;
+    }
+}
 
-int _tmain(int argc, TCHAR* argv[])
-{
+int _tmain(int argc, TCHAR* argv[]) {
     HANDLE hExistServer, hUpdateEvent, hExitEvent;
     HANDLE hFileMap;
     HANDLE hUpdateThread, hCMDThread, hThreadConsumidor;
     HANDLE hMutexRoad;
     GAME game;
-    BOOL primeiroProcesso = FALSE;
 #ifdef UNICODE
     _setmode(_fileno(stdin), _O_WTEXT);
     _setmode(_fileno(stdout), _O_WTEXT);
@@ -366,14 +440,13 @@ int _tmain(int argc, TCHAR* argv[])
         _tprintf(_T("[ERRO] Evento não criado\n\n"));
         ExitProcess(1);
     }
-    srand(time(NULL));
     //Evento para assinalar que houve uma atualização do 'tabuleiro'
     hUpdateEvent = CreateEvent(NULL, TRUE, FALSE, UPDATE_EVENT);
     if (hUpdateEvent == NULL) {
         _tprintf(_T("[ERRO] Evento não criado\n\n"));
         ExitProcess(1);
     }
-
+    srand(time(NULL));
     //criar semaforo que conta as escritas
     game.sharedData.hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
     //criar semaforo que controla a leitura
@@ -383,7 +456,6 @@ int _tmain(int argc, TCHAR* argv[])
         _tprintf(TEXT("Erro no CreateSemaphore ou no CreateMutex\n"));
         return -1;
     }
-
 
     hFileMap = CreateFileMapping(
         INVALID_HANDLE_VALUE,
@@ -397,9 +469,7 @@ int _tmain(int argc, TCHAR* argv[])
         return -1;
     }
 
-
     game.sharedData.memPar = (SHARED_MEMORY*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
-
     if (game.sharedData.memPar == NULL) {
         _tprintf(TEXT("Erro no MapViewOfFile\n"));
         return -1;
@@ -417,13 +487,13 @@ int _tmain(int argc, TCHAR* argv[])
     game.sharedData.id = game.sharedData.memPar->bufferCircular.nConsumidores;
     ReleaseMutex(game.sharedData.hMutex);
 
-
     game.dwShutDown = 0;
     game.dwLevel = 1;
+    game.bPaused = FALSE;
     initRegestry(&game);
     initSharedBoard(&game.sharedData.memPar->sharedBoard, game.dwInitNumOfRoads + 4);
     initRoads(game.roads, game.dwInitSpeed);
-
+    initPlayers(game.players, game.dwInitNumOfRoads);
     //lançamos as estradas ao mesmo tempo
     hMutexRoad = CreateMutex(NULL, FALSE, MUTEX_ROAD);
     for (int i = 0; i < MAX_ROADS; i++) {
@@ -434,7 +504,7 @@ int _tmain(int argc, TCHAR* argv[])
     //lancamos a thread
     hCMDThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CMDThread, (LPVOID)&game, 0, NULL);
     hUpdateThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UpdateThread, (LPVOID)&game, 0, NULL);
-    hThreadConsumidor = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game.sharedData, 0, NULL);
+    hThreadConsumidor = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game, 0, NULL);
 
     WaitForSingleObject(hUpdateThread, INFINITE);
     WaitForSingleObject(hCMDThread, INFINITE);
