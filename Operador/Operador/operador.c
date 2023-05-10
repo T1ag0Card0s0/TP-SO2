@@ -81,9 +81,15 @@ DWORD WINAPI ShowBoard(LPVOID param) {
     DWORD written;
     while (TRUE) {
         fflush(stdin); fflush(stdout);
-        WaitForSingleObject(hEvent, INFINITE);
+
         for (int i = 0; i < sharedBoard->dwHeight; i++) {
             WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), sharedBoard->board[i], sharedBoard->dwWidth, pos, &written);
+            pos.Y++;
+        }
+        WaitForSingleObject(hEvent, INFINITE);
+        pos.Y = 1;
+        for (int i = 0; i < MAX_ROADS + 4; i++) {
+            FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
             pos.Y++;
         }
         ResetEvent(hEvent);
@@ -94,6 +100,7 @@ DWORD WINAPI ShowBoard(LPVOID param) {
 }
 
 DWORD WINAPI CheckIfServerExit(LPVOID param) {
+    DWORD* shutdown = (DWORD*)param;
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, EXIT_EVENT);
     if (hEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
@@ -101,6 +108,7 @@ DWORD WINAPI CheckIfServerExit(LPVOID param) {
     }
     // Esperar pelo evento
     WaitForSingleObject(hEvent, INFINITE);
+   * shutdown = 1;
     _tprintf(_T("Desconectado...\n"));
     // Server saiu entao sai
     CloseHandle(hEvent);
@@ -119,7 +127,7 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
         GoToXY(pos.X, pos.Y);
         FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
         _tprintf(_T("[OPERADOR]$ "));
-        _fgetts(cel.str, 100, stdin);
+        _tcscanf_s(_T("%s"), cel.str, TAM);
 
         //esperamos por uma posicao para escrevermos
         WaitForSingleObject(dados->hSemEscrita, INFINITE);
@@ -132,14 +140,14 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
         //se apos o incremento a posicao de escrita chegar ao fim, tenho de voltar ao inicio
         if (dados->sharedMemory->bufferCircular.posE == TAM_BUF)
             dados->sharedMemory->bufferCircular.posE = 0;
-
         //libertamos o mutex
         ReleaseMutex(dados->hMutex);
         //libertamos o semaforo para leitura
         ReleaseSemaphore(dados->hSemLeitura, 1, NULL);
-    }
+        if (!_tcscmp(cel.str, _T("exit")))dados->terminar = 1;
 
-    return 0;
+    }
+    ExitThread(0);
 }
 
 int _tmain(int argc, TCHAR* argv[])
@@ -173,7 +181,7 @@ int _tmain(int argc, TCHAR* argv[])
         _tprintf(_T("Erro a abrir o fileMapping \n"));
         return -1;
     }
-    //mapeamos o bloco de memoria para o espaco de endera?amento do nosso processo
+    //mapeamos o bloco de memoria para o espaco de enderaçamento do nosso processo
     dados.sharedMemory = (SHARED_MEMORY*)MapViewOfFile(hFileMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
     if (dados.sharedMemory == NULL) {
         _tprintf(TEXT("Erro no MapViewOfFile\n"));
@@ -190,14 +198,15 @@ int _tmain(int argc, TCHAR* argv[])
 
     //lancamos a thread
     hShowBoardTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ShowBoard, (LPVOID)&dados.sharedMemory->sharedBoard, 0, NULL);
-    hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
-    hThreadProdutor = CreateThread(NULL, 0, ThreadProdutor, &dados, 0, NULL);
+    hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, (LPVOID)&dados.terminar, 0, NULL);
+    hThreadProdutor = CreateThread(NULL, 0, ThreadProdutor, (LPVOID)&dados, 0, NULL);
 
-    WaitForSingleObject(hServerTh, INFINITE);
+    WaitForSingleObject(hThreadProdutor, INFINITE);
 
     UnmapViewOfFile(dados.sharedMemory);
     CloseHandle(hShowBoardTh);
     CloseHandle(hServerTh);
+    CloseHandle(hThreadProdutor);
     ExitProcess(0);
     return 0;
 
