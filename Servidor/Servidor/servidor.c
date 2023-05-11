@@ -232,11 +232,13 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         WaitForSingleObject(hEvent, INFINITE);
         if (game->dwInitNumOfRoads != game->sharedData.memPar->sharedBoard.dwHeight - 4 ||
             game->dwInitSpeed * 100 != game->roads[0].dwSpeed) {
+
             initSharedBoard(&game->sharedData.memPar->sharedBoard, game->dwInitNumOfRoads + 4);
             for (int i = 0; i < game->dwInitNumOfRoads; i++) {
                 game->roads[i].dwSpeed = game->dwInitSpeed * 100;
             }
             initPlayers(game->players, game->dwInitNumOfRoads);
+
             continue;
         }
 
@@ -269,7 +271,7 @@ DWORD WINAPI UpdateThread(LPVOID param) {
 
 DWORD WINAPI RoadMove(LPVOID param) {
     ROAD* road = (ROAD*)param;
-
+    BOOL bNextToObstacle = FALSE;
     HANDLE hUpdateEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
     if (hUpdateEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
@@ -278,13 +280,27 @@ DWORD WINAPI RoadMove(LPVOID param) {
     int runningCars = 0, numSteps = 0;
     while (TRUE) {
         WaitForSingleObject(road->hMutex, INFINITE);
-        if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars)
-        {
+        if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars){
             numSteps = 0;
             runningCars++;
         }
         for (int i = 0; i < runningCars; i++) {
-            moveObject(&road->cars[i], road->way);
+            for (int j = 0; j < road->dwNumOfObjects; j++) {
+                if (road->objects[j].dwX - 1 == road->cars[i].dwX && road->way == RIGHT)
+                    bNextToObstacle = TRUE;
+                else if (road->objects[j].dwX + 1 == road->cars[i].dwX && road->way == LEFT)
+                    bNextToObstacle = TRUE;
+
+            }
+            for (int j = 0; j < runningCars; j++) {
+                if (road->cars[j].dwX - 1 == road->cars[i].dwX && road->way == RIGHT)
+                    bNextToObstacle = TRUE;
+                else if (road->cars[j].dwX + 1 == road->cars[i].dwX && road->way == LEFT)
+                    bNextToObstacle = TRUE;
+            }
+            if (!bNextToObstacle)
+                moveObject(&road->cars[i], road->way);
+            else bNextToObstacle = FALSE;
         }
 
         numSteps++;
@@ -333,10 +349,9 @@ void moveObject(OBJECT* objData, WAY way) {
 void commandExecutor(TCHAR command[], ROAD* road) {
     TCHAR cmd[TAM];
     DWORD index;
-    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
     _stscanf_s(command, _T("%s %u"), cmd, TAM, &index);
 
-    if (index<0 || index>MAX_ROADS) return;
+    if (index<0 || index>=MAX_ROADS) return;
 
     if (!_tcscmp(cmd, _T("pause"))) {
         DWORD value;
@@ -349,7 +364,7 @@ void commandExecutor(TCHAR command[], ROAD* road) {
         DWORD num = road[index].dwNumOfObjects++;
         road[index].objects[num].c = _T('X');
         road[index].objects[num].dwX = rand() % MAX_WIDTH;
-        road[index].objects[num].dwY = index + 1;
+        road[index].objects[num].dwY = index+2 ;
     }
     else if (!_tcscmp(cmd, _T("invert"))) {
         if (road[index].way == LEFT)road[index].way = RIGHT;
