@@ -121,13 +121,15 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
     COORD pos = { 0,0 };
     DWORD written;
     CELULA_BUFFER cel;
+    TCHAR cmd[TAM];
     while (!dados->terminar) {
         cel.id = dados->id;
         fflush(stdin); fflush(stdout);
         GoToXY(pos.X, pos.Y);
         FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
         _tprintf(_T("[OPERADOR]$ "));
-        _tcscanf_s(_T("%s"), cel.str, TAM);
+        _fgetts(cel.str,TAM,stdin);
+        _stscanf_s(cel.str, _T("%s"), cmd, TAM);
 
         //esperamos por uma posicao para escrevermos
         WaitForSingleObject(dados->hSemEscrita, INFINITE);
@@ -144,7 +146,7 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
         ReleaseMutex(dados->hMutex);
         //libertamos o semaforo para leitura
         ReleaseSemaphore(dados->hSemLeitura, 1, NULL);
-        if (!_tcscmp(cel.str, _T("exit")))dados->terminar = 1;
+        if (!_tcscmp(cmd, _T("exit")))dados->terminar = 1;
 
     }
     ExitThread(0);
