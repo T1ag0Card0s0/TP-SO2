@@ -262,11 +262,6 @@ DWORD WINAPI RoadMove(LPVOID param) {
     }
     int runningCars = 0, numSteps = 0;
     while (TRUE) {
-        if (road->dwTimeStoped > 0) {
-            Sleep(road->dwTimeStoped * 1000);
-            road->dwTimeStoped = 0;
-            road->way = road->lastWay;
-        }
         WaitForSingleObject(road->hMutex, INFINITE);
         if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars) { numSteps = 0; runningCars++; }
         for (int i = 0; i < runningCars; i++) {
@@ -276,6 +271,11 @@ DWORD WINAPI RoadMove(LPVOID param) {
         SetEvent(hUpdateEvent);
         ReleaseMutex(road->hMutex);
         Sleep(road->dwSpeed);
+        if (road->dwTimeStoped > 0) {
+            Sleep(road->dwTimeStoped * 1000);
+            road->dwTimeStoped = 0;
+            road->way = road->lastWay;
+        }
     }
     ExitThread(0);
 }
