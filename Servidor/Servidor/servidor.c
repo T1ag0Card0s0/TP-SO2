@@ -74,6 +74,7 @@ typedef struct OBJECT {
 }OBJECT;
 typedef struct ROAD {
     DWORD dwNumOfCars;
+    DWORD dwNumOfObjects;
     DWORD dwSpaceBetween;
     DWORD dwSpeed;
     DWORD dwTimeStoped;
@@ -85,6 +86,7 @@ typedef struct ROAD {
     WAY way;
 
     OBJECT cars[MAX_CARS_PER_ROAD];
+    OBJECT objects[MAX_CARS_PER_ROAD];
 }ROAD;
 
 typedef struct GAME {
@@ -216,6 +218,8 @@ DWORD WINAPI CMDThread(LPVOID param) {
 
     ExitThread(0);
 }
+
+
 DWORD WINAPI UpdateThread(LPVOID param) {
     GAME* game = (GAME*)param;
     int i, j;
@@ -243,9 +247,20 @@ DWORD WINAPI UpdateThread(LPVOID param) {
                 game->sharedData.memPar->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
             }
         }
+
         for (i = 0; i < MAX_PLAYERS; i++) {
             game->sharedData.memPar->sharedBoard.board[game->players[i].dwY][game->players[i].dwX] = game->players[i].c;
         }
+
+        for (i = 0; i < game->dwInitNumOfRoads; i++) {
+            if (game->roads[i].dwNumOfObjects != 0) {
+                for (j = 0; j < game->roads[i].dwNumOfObjects; j++) {
+                    OBJECT obj = game->roads[i].objects[j];
+                    game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
+                }
+            }
+        }
+
         ResetEvent(hEvent);
 
     }
@@ -263,14 +278,20 @@ DWORD WINAPI RoadMove(LPVOID param) {
     int runningCars = 0, numSteps = 0;
     while (TRUE) {
         WaitForSingleObject(road->hMutex, INFINITE);
-        if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars) { numSteps = 0; runningCars++; }
+        if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars)
+        {
+            numSteps = 0;
+            runningCars++;
+        }
         for (int i = 0; i < runningCars; i++) {
             moveObject(&road->cars[i], road->way);
         }
+
         numSteps++;
         SetEvent(hUpdateEvent);
         ReleaseMutex(road->hMutex);
         Sleep(road->dwSpeed);
+
         if (road->dwTimeStoped > 0) {
             Sleep(road->dwTimeStoped * 1000);
             road->dwTimeStoped = 0;
@@ -308,13 +329,15 @@ void moveObject(OBJECT* objData, WAY way) {
         break;
     }
     }
-
 }
 void commandExecutor(TCHAR command[], ROAD* road) {
     TCHAR cmd[TAM];
     DWORD index;
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
     _stscanf_s(command, _T("%s %u"), cmd, TAM, &index);
+
     if (index<0 || index>MAX_ROADS) return;
+
     if (!_tcscmp(cmd, _T("pause"))) {
         DWORD value;
         _stscanf_s(command, _T("%s %u %u"), cmd, TAM, &index, &value);
@@ -323,7 +346,10 @@ void commandExecutor(TCHAR command[], ROAD* road) {
         road[index].dwTimeStoped = value;
     }
     else if (!_tcscmp(cmd, _T("insert"))) {
-
+        DWORD num = road[index].dwNumOfObjects++;
+        road[index].objects[num].c = _T('X');
+        road[index].objects[num].dwX = rand() % MAX_WIDTH;
+        road[index].objects[num].dwY = index + 1;
     }
     else if (!_tcscmp(cmd, _T("invert"))) {
         if (road[index].way == LEFT)road[index].way = RIGHT;
@@ -344,7 +370,6 @@ void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight) {
             }
         }
     }
-
 }
 void initRegestry(GAME* data) {
     DWORD estado;
@@ -389,6 +414,7 @@ void initRegestry(GAME* data) {
 }
 void initRoads(ROAD* roads, DWORD dwInitSpeed) {
     for (int i = 0; i < MAX_ROADS; i++) {
+        roads[i].dwNumOfObjects = 0;
         roads[i].dwNumOfCars = rand() % MAX_CARS_PER_ROAD + 1;
         roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / MAX_CARS_PER_ROAD) + 2;
         roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
