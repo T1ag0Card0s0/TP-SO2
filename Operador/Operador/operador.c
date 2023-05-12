@@ -82,11 +82,11 @@ DWORD WINAPI ShowBoard(LPVOID param) {
     while (TRUE) {
         fflush(stdin); fflush(stdout);
         WaitForSingleObject(hEvent, INFINITE);
-        for (int i = 0; i < MAX_ROADS; i++) {
-            if (i < sharedBoard->dwHeight)
+        for (int i = 0; i < MAX_ROADS+4; i++) {
+            if(i<sharedBoard->dwHeight)
                 WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), sharedBoard->board[i], sharedBoard->dwWidth, pos, &written);
-            else
-                FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', MAX_WIDTH, pos, &written);
+           else
+               FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', MAX_WIDTH, pos, &written);
             pos.Y++;
         }
         pos.Y = 1;
