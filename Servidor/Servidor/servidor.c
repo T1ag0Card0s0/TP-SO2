@@ -227,7 +227,6 @@ DWORD WINAPI CMDThread(LPVOID param) {
 
 DWORD WINAPI UpdateThread(LPVOID param) {
     GAME* game = (GAME*)param;
-    int i, j;
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
     if (hEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
@@ -237,32 +236,32 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         WaitForSingleObject(hEvent, INFINITE);
         if (game->dwInitNumOfRoads != game->sharedData.memPar->sharedBoard.dwHeight - 4 ||
             game->dwInitSpeed * 100 != game->roads[0].dwSpeed) {
-
             initSharedBoard(&game->sharedData.memPar->sharedBoard, game->dwInitNumOfRoads + 4);
             for (int i = 0; i < game->dwInitNumOfRoads; i++) {
                 game->roads[i].dwSpeed = game->dwInitSpeed * 100;
             }
             initPlayers(game->players, game->dwInitNumOfRoads);
-
             continue;
         }
 
-        for (i = 0; i < game->dwInitNumOfRoads; i++) {
-            for (j = 0; j < game->roads[i].dwNumOfCars; j++) {
+        for (int i = 0; i < game->dwInitNumOfRoads; i++) {
+            for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
                 OBJECT obj = game->roads[i].cars[j];
                 game->sharedData.memPar->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
                 game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
+                
             }
             if (game->roads[i].dwNumOfObjects != 0) {
-                for (j = 0; j < game->roads[i].dwNumOfObjects; j++) {
+                for (int j = 0; j < game->roads[i].dwNumOfObjects; j++) {
                     OBJECT obj = game->roads[i].objects[j];
                     game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
                 }
             }
         }
-        for (i = 0; i < MAX_PLAYERS; i++) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
             game->sharedData.memPar->sharedBoard.board[game->players[i].dwY][game->players[i].dwX] = game->players[i].c;
         }
+        
         ResetEvent(hEvent);
 
     }
@@ -279,7 +278,6 @@ DWORD WINAPI RoadMove(LPVOID param) {
     }
     int runningCars = 0, numSteps = 0;
     while (TRUE) {
-
         if (road->dwTimeStoped > 0) {
             Sleep(road->dwTimeStoped * 1000);
             road->dwTimeStoped = 0;
@@ -304,16 +302,22 @@ DWORD WINAPI RoadMove(LPVOID param) {
 
             for (int j = 0; j < runningCars; j++) {
                 if (road->cars[j].dwY != road->cars[i].dwY)continue;
-                if ((road->cars[j].dwX - 1 == road->cars[i].dwX)
+                if (((road->cars[j].dwX == road->cars[i].dwX+1) ||
+                    (road->cars[j].dwX == 0 && road->cars[i].dwX == MAX_WIDTH-1))
                     && road->way == RIGHT)
                     bNextToObstacle = TRUE;
-                else if ((road->cars[j].dwX + 1 == road->cars[i].dwX)
+                else if (((road->cars[j].dwX == road->cars[i].dwX-1) ||
+                    (road->cars[j].dwX == MAX_WIDTH - 1 && road->cars[i].dwX == 0))
                     && road->way == LEFT)
                     bNextToObstacle = TRUE;
             }
 
             if (!bNextToObstacle)moveObject(&road->cars[i], road->way);
-            else bNextToObstacle = FALSE;
+            else { 
+                road->cars[i].dwLastX = road->cars[i].dwX;
+                road->cars[i].dwLastY = road->cars[i].dwY;
+                bNextToObstacle = FALSE; 
+            }
         }
 
         numSteps++;
