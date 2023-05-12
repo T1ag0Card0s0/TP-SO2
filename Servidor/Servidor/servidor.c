@@ -157,6 +157,11 @@ DWORD WINAPI CMDThread(LPVOID param) {
     COORD pos;
     TCHAR command_line[TAM];
     TCHAR cmd[TAM];
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
+    if (hEvent == NULL) {
+        _tprintf(_T("Erro a abrir o evento\n\n"));
+        ExitThread(-1);
+    }
     getCurrentCursorPosition(&x, &y);
     while (!game->dwShutDown) {
         fflush(stdout); fflush(stdin);
@@ -245,16 +250,9 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         for (i = 0; i < game->dwInitNumOfRoads; i++) {
             for (j = 0; j < game->roads[i].dwNumOfCars; j++) {
                 OBJECT obj = game->roads[i].cars[j];
-                game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
                 game->sharedData.memPar->sharedBoard.board[obj.dwLastY][obj.dwLastX] = _T(' ');
+                game->sharedData.memPar->sharedBoard.board[obj.dwY][obj.dwX] = obj.c;
             }
-        }
-
-        for (i = 0; i < MAX_PLAYERS; i++) {
-            game->sharedData.memPar->sharedBoard.board[game->players[i].dwY][game->players[i].dwX] = game->players[i].c;
-        }
-
-        for (i = 0; i < game->dwInitNumOfRoads; i++) {
             if (game->roads[i].dwNumOfObjects != 0) {
                 for (j = 0; j < game->roads[i].dwNumOfObjects; j++) {
                     OBJECT obj = game->roads[i].objects[j];
@@ -262,7 +260,9 @@ DWORD WINAPI UpdateThread(LPVOID param) {
                 }
             }
         }
-
+        for (i = 0; i < MAX_PLAYERS; i++) {
+            game->sharedData.memPar->sharedBoard.board[game->players[i].dwY][game->players[i].dwX] = game->players[i].c;
+        }
         ResetEvent(hEvent);
 
     }
@@ -279,24 +279,36 @@ DWORD WINAPI RoadMove(LPVOID param) {
     }
     int runningCars = 0, numSteps = 0;
     while (TRUE) {
+
+        if (road->dwTimeStoped > 0) {
+            Sleep(road->dwTimeStoped * 1000);
+            road->dwTimeStoped = 0;
+            road->way = road->lastWay;
+        }
         WaitForSingleObject(road->hMutex, INFINITE);
-        if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars){
+        if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars) {
             numSteps = 0;
             runningCars++;
         }
         for (int i = 0; i < runningCars; i++) {
 
             for (int j = 0; j < road->dwNumOfObjects; j++) {
-                if (road->objects[j].dwX - 1 == road->cars[i].dwX && road->way == RIGHT)
+                if (road->objects[j].dwY != road->cars[i].dwY)continue;
+                if ((road->objects[j].dwX - 1 == road->cars[i].dwX)
+                    && road->way == RIGHT)
                     bNextToObstacle = TRUE;
-                else if (road->objects[j].dwX + 1 == road->cars[i].dwX && road->way == LEFT)
+                else if ((road->objects[j].dwX + 1 == road->cars[i].dwX)
+                    && road->way == LEFT)
                     bNextToObstacle = TRUE;
             }
 
             for (int j = 0; j < runningCars; j++) {
-                if (road->cars[j].dwX - 1 == road->cars[i].dwX && road->way == RIGHT)
+                if (road->cars[j].dwY != road->cars[i].dwY)continue;
+                if ((road->cars[j].dwX - 1 == road->cars[i].dwX)
+                    && road->way == RIGHT)
                     bNextToObstacle = TRUE;
-                else if (road->cars[j].dwX + 1 == road->cars[i].dwX && road->way == LEFT)
+                else if ((road->cars[j].dwX + 1 == road->cars[i].dwX)
+                    && road->way == LEFT)
                     bNextToObstacle = TRUE;
             }
 
@@ -305,15 +317,12 @@ DWORD WINAPI RoadMove(LPVOID param) {
         }
 
         numSteps++;
-        SetEvent(hUpdateEvent);
+        if (road->way != STOP) {
+            SetEvent(hUpdateEvent);
+        }
         ReleaseMutex(road->hMutex);
         Sleep(road->dwSpeed);
 
-        if (road->dwTimeStoped > 0) {
-            Sleep(road->dwTimeStoped * 1000);
-            road->dwTimeStoped = 0;
-            road->way = road->lastWay;
-        }
     }
     ExitThread(0);
 }
@@ -352,7 +361,7 @@ void commandExecutor(TCHAR command[], ROAD* road) {
     DWORD index;
     _stscanf_s(command, _T("%s %u"), cmd, TAM, &index);
 
-    if (index<0 || index>=MAX_ROADS) return;
+    if (index < 0 || index >= MAX_ROADS) return;
 
     if (!_tcscmp(cmd, _T("pause"))) {
         DWORD value;
@@ -364,8 +373,8 @@ void commandExecutor(TCHAR command[], ROAD* road) {
     else if (!_tcscmp(cmd, _T("insert"))) {
         DWORD num = road[index].dwNumOfObjects++;
         road[index].objects[num].c = _T('X');
-        road[index].objects[num].dwX = rand() % MAX_WIDTH;
-        road[index].objects[num].dwY = index+2 ;
+        road[index].objects[num].dwX = (rand() % (MAX_WIDTH - 4)) + 3;
+        road[index].objects[num].dwY = index + 2;
     }
     else if (!_tcscmp(cmd, _T("invert"))) {
         if (road[index].way == LEFT)road[index].way = RIGHT;
@@ -488,7 +497,7 @@ int _tmain(int argc, TCHAR* argv[]) {
         _tprintf(_T("[ERRO] Evento não criado\n\n"));
         ExitProcess(1);
     }
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     //criar semaforo que conta as escritas
     game.sharedData.hSemEscrita = CreateSemaphore(NULL, TAM_BUF, TAM_BUF, WRITE_SEMAPHORE);
     //criar semaforo que controla a leitura
