@@ -81,19 +81,17 @@ DWORD WINAPI ShowBoard(LPVOID param) {
     DWORD written;
     while (TRUE) {
         fflush(stdin); fflush(stdout);
-
-        for (int i = 0; i < sharedBoard->dwHeight; i++) {
-            WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), sharedBoard->board[i], sharedBoard->dwWidth, pos, &written);
-            pos.Y++;
-        }
         WaitForSingleObject(hEvent, INFINITE);
-        pos.Y = 1;
-        for (int i = 0; i < MAX_ROADS + 4; i++) {
-            FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
+        for (int i = 0; i < MAX_ROADS; i++) {
+            if (i < sharedBoard->dwHeight)
+                WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), sharedBoard->board[i], sharedBoard->dwWidth, pos, &written);
+            else
+                FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', MAX_WIDTH, pos, &written);
             pos.Y++;
         }
-        ResetEvent(hEvent);
         pos.Y = 1;
+        ResetEvent(hEvent);
+
 
     }
     ExitThread(0);
@@ -108,7 +106,7 @@ DWORD WINAPI CheckIfServerExit(LPVOID param) {
     }
     // Esperar pelo evento
     WaitForSingleObject(hEvent, INFINITE);
-   * shutdown = 1;
+    *shutdown = 1;
     _tprintf(_T("Desconectado...\n"));
     // Server saiu entao sai
     CloseHandle(hEvent);
@@ -128,7 +126,7 @@ DWORD WINAPI ThreadProdutor(LPVOID param) {
         GoToXY(pos.X, pos.Y);
         FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 50, pos, &written);
         _tprintf(_T("[OPERADOR]$ "));
-        _fgetts(cel.str,TAM,stdin);
+        _fgetts(cel.str, TAM, stdin);
         _stscanf_s(cel.str, _T("%s"), cmd, TAM);
 
         //esperamos por uma posicao para escrevermos
