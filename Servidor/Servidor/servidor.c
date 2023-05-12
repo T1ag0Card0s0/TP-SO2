@@ -157,11 +157,6 @@ DWORD WINAPI CMDThread(LPVOID param) {
     COORD pos;
     TCHAR command_line[TAM];
     TCHAR cmd[TAM];
-    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
-    if (hEvent == NULL) {
-        _tprintf(_T("Erro a abrir o evento\n\n"));
-        ExitThread(-1);
-    }
     getCurrentCursorPosition(&x, &y);
     while (!game->dwShutDown) {
         fflush(stdout); fflush(stdin);
@@ -262,7 +257,7 @@ DWORD WINAPI UpdateThread(LPVOID param) {
             game->sharedData.memPar->sharedBoard.board[game->players[i].dwY][game->players[i].dwX] = game->players[i].c;
         }
         
-        ResetEvent(hEvent);
+        //ResetEvent(hEvent);
 
     }
     ExitThread(0);
