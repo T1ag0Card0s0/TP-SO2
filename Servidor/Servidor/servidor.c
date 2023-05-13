@@ -298,11 +298,11 @@ DWORD WINAPI RoadMove(LPVOID param) {
             for (int j = 0; j < runningCars; j++) {
                 if (road->cars[j].dwY != road->cars[i].dwY)continue;
                 if (((road->cars[j].dwX == road->cars[i].dwX+1) ||
-                    (road->cars[j].dwX == 0 && road->cars[i].dwX == MAX_WIDTH-1))
+                    (road->cars[j].dwX == 1 && road->cars[i].dwX == MAX_WIDTH-1))
                     && road->way == RIGHT)
                     bNextToObstacle = TRUE;
                 else if (((road->cars[j].dwX == road->cars[i].dwX-1) ||
-                    (road->cars[j].dwX == MAX_WIDTH - 1 && road->cars[i].dwX == 0))
+                    (road->cars[j].dwX == MAX_WIDTH - 1 && road->cars[i].dwX == 1))
                     && road->way == LEFT)
                     bNextToObstacle = TRUE;
             }
