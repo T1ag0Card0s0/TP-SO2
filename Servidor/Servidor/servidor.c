@@ -435,6 +435,13 @@ void initRegestry(GAME* data) {
             _tprintf(_T("Não foi possivel obter o valor das faixas por favor insira um novo\n"));
         }
     }
+    //limpa consola
+    COORD pos = { 0,0 };
+    DWORD written;
+    for (int i = 0; i < MAX_ROADS; i++) {
+        FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', 200, pos, &written);
+        pos.Y++;
+    }
 }
 void initRoads(ROAD* roads, DWORD dwInitSpeed) {
     for (int i = 0; i < MAX_ROADS; i++) {
