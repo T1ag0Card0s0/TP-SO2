@@ -14,11 +14,11 @@ DWORD WINAPI ShowBoard(LPVOID param) {
     while (TRUE) {
         fflush(stdin); fflush(stdout);
         WaitForSingleObject(hEvent, INFINITE);
-        for (int i = 0; i < MAX_ROADS+4; i++) {
-           if(i<dados->memPar->sharedBoard.dwHeight)
+        for (int i = 0; i < MAX_ROADS + 4; i++) {
+            if (i < dados->memPar->sharedBoard.dwHeight)
                 WriteConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), dados->memPar->sharedBoard.board[i], dados->memPar->sharedBoard.dwWidth, pos, &written);
-           else
-               FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', MAX_WIDTH, pos, &written);
+            else
+                FillConsoleOutputCharacter(GetStdHandle(STD_OUTPUT_HANDLE), ' ', MAX_WIDTH, pos, &written);
             pos.Y++;
         }
         pos.Y = 1;
@@ -68,13 +68,13 @@ int _tmain(int argc, TCHAR* argv[])
     _setmode(_fileno(stdout), _O_WTEXT);
 #endif
     srand(time(NULL));
-    if ((dados.hdll = LoadLibrary(_T("DynamicLinkLibrary.dll"))) == NULL) ExitProcess(-1);
+    if ((dados.hdll = LoadLibrary(_T("..\\..\\DynamicLinkLibrary\\x64\\Debug\\DynamicLinkLibrary.dll"))) == NULL) ExitProcess(-1);
 
     //lancamos a thread
     hThreadProdutor = CreateThread(NULL, 0, ThreadProdutor, (LPVOID)&dados, 0, NULL);
     hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, (LPVOID)&dados.terminar, 0, NULL);
     hShowBoardTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ShowBoard, (LPVOID)&dados, 0, NULL);
-  
+
     WaitForSingleObject(hThreadProdutor, INFINITE);
 
     CloseHandle(hShowBoardTh);
