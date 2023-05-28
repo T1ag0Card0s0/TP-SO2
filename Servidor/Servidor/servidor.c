@@ -16,10 +16,10 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
 }
 
 DWORD WINAPI ThreadConsumidor(LPVOID param) {
-   //dll chamar consumidor
-    GAME *game=(GAME *)param;
+    //dll chamar consumidor
+    GAME* game = (GAME*)param;
     PFUNC_CONS pfunc;
-    if ((pfunc = (PFUNC_CONS)GetProcAddress(game->sharedData.hdll, "consumidor")) == NULL) ExitThread(- 1);
+    if ((pfunc = (PFUNC_CONS)GetProcAddress(game->sharedData.hdll, "consumidor")) == NULL) ExitThread(-1);
     pfunc(game);
     ExitThread(0);
 }
@@ -93,7 +93,7 @@ DWORD WINAPI CMDThread(LPVOID param) {
 }
 
 DWORD WINAPI UpdateThread(LPVOID param) {
-    GAME *game= (GAME *)param;
+    GAME* game = (GAME*)param;
     PFUNC_UPDATE pfunc;
     if ((pfunc = (PFUNC_UPDATE)GetProcAddress(game->sharedData.hdll, "update_board")) == NULL) ExitThread(-1);
     ExitThread(pfunc(game));
@@ -133,21 +133,21 @@ DWORD WINAPI RoadMove(LPVOID param) {
 
             for (int j = 0; j < runningCars; j++) {
                 if (road->cars[j].dwY != road->cars[i].dwY)continue;
-                if (((road->cars[j].dwX == road->cars[i].dwX+1) ||
-                    (road->cars[j].dwX == 1 && road->cars[i].dwX == MAX_WIDTH-1))
+                if (((road->cars[j].dwX == road->cars[i].dwX + 1) ||
+                    (road->cars[j].dwX == 1 && road->cars[i].dwX == MAX_WIDTH - 1))
                     && road->way == RIGHT)
                     bNextToObstacle = TRUE;
-                else if (((road->cars[j].dwX == road->cars[i].dwX-1) ||
+                else if (((road->cars[j].dwX == road->cars[i].dwX - 1) ||
                     (road->cars[j].dwX == MAX_WIDTH - 1 && road->cars[i].dwX == 1))
                     && road->way == LEFT)
                     bNextToObstacle = TRUE;
             }
 
             if (!bNextToObstacle)moveObject(&road->cars[i], road->way);
-            else { 
+            else {
                 road->cars[i].dwLastX = road->cars[i].dwX;
                 road->cars[i].dwLastY = road->cars[i].dwY;
-                bNextToObstacle = FALSE; 
+                bNextToObstacle = FALSE;
             }
         }
 
@@ -287,14 +287,14 @@ int _tmain(int argc, TCHAR* argv[]) {
     hExistServer = CreateMutex(NULL, TRUE, MUTEX_SERVER);
     hExitEvent = CreateEvent(NULL, TRUE, FALSE, EXIT_EVENT);
     hUpdateEvent = CreateEvent(NULL, TRUE, FALSE, UPDATE_EVENT);
-    if (GetLastError() == ERROR_ALREADY_EXISTS|| hExitEvent == NULL|| hUpdateEvent == NULL) {
+    if (GetLastError() == ERROR_ALREADY_EXISTS || hExitEvent == NULL || hUpdateEvent == NULL) {
         _tprintf(_T("[ERRO] Erro a iniciar o programa\n"));
         ExitProcess(1);
     }
-    if ((game.sharedData.hdll = LoadLibrary(_T("DynamicLinkLibrary.dll"))) == NULL) ExitProcess(-1);
+    if ((game.sharedData.hdll = LoadLibrary(_T("..\\..\\DynamicLinkLibrary\\x64\\Debug\\DynamicLinkLibrary.dll"))) == NULL) ExitProcess(-1);
 
     srand((unsigned int)time(NULL));
-   
+
     initRegestry(&game);
     hThreadConsumidor = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game, 0, NULL);
     initRoads(game.roads, game.dwInitSpeed);
