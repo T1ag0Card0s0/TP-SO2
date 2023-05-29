@@ -1,0 +1,4 @@
+﻿  sapo.c
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(36,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(122,58): warning C4133: 'função': tipos incompatíveis - de 'char [11]' para 'LPCWSTR'
+  Sapo.vcxproj -> C:\SO2\TP-SO2\Sapo\x64\Debug\Sapo.exe

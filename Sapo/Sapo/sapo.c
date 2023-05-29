@@ -79,7 +79,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		(HMENU)NULL,			// handle do menu da janela (se tiver menu)
 		(HINSTANCE)hInst,		// handle da instância do programa actual ("hInst" é 
 		// passado num dos parâmetros de WinMain()
-		0);	
+		0);
 
 	ShowWindow(hWnd, nCmdShow);	// "hWnd"= handler da janela, devolvido por 
 	// "CreateWindow"; "nCmdShow"= modo de exibição (p.e. 
@@ -91,7 +91,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 		TranslateMessage(&lpMsg);	// Pré-processamento da mensagem (p.e. obter código 
 		// ASCII da tecla premida)
 		DispatchMessage(&lpMsg);	// Enviar a mensagem traduzida de volta ao Windows, que
-		
+
 	}
 
 	ReleaseSemaphore(hSemaphore, 1, NULL); // libera o semáforo
@@ -111,7 +111,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	default:
 		return(DefWindowProc(hWnd, messg, wParam, lParam));
-		break; 
+		break;
 	}
 	return(0);
 }
@@ -154,4 +154,3 @@ int CheckNumberOfInstances(HANDLE hSemaphore) {
 	}
 	return 1;
 }
-
