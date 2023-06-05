@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 
 #ifdef DYNAMICLINKLIBRARY_EXPORTS
 # define DLL_API __declspec(dllexport)
@@ -86,24 +87,10 @@ typedef struct ROAD {
     OBJECT objects[MAX_CARS_PER_ROAD];
 }ROAD;
 
-typedef struct GAME {
-    DWORD dwLevel;
-    DWORD dwShutDown;
-    DWORD dwInitSpeed, dwInitNumOfRoads;
-    BOOL  bPaused;
 
-    HANDLE hKey;
-
-    SHARED_DATA sharedData;
-    OBJECT players[MAX_PLAYERS];
-    ROAD roads[MAX_ROADS];
-}GAME;
-    
-DLL_API extern int consumidor(GAME* game);
-DLL_API extern int produtor(SHARED_DATA* dados);
-DLL_API extern int update_board(GAME* game);
+DLL_API extern int consumidor(SHARED_DATA* sharedData, ROAD* road, DWORD dwNumRoads);
+DLL_API extern int produtor(SHARED_DATA* sharedData);
 void commandExecutor(TCHAR command[], ROAD* road);
-void initGameData(GAME* game, HANDLE* hFileMap);
-void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight);
-void initPlayers(OBJECT* players, DWORD dwNumRoads);
+void initGameData(SHARED_DATA * sharedData, HANDLE * hFileMap);
+void initSharedBoard(SHARED_BOARD * sharedBoard, DWORD dwHeight);
 void GoToXY(int column, int line);
