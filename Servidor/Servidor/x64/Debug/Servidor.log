@@ -1,15 +1,16 @@
 ﻿  servidor.c
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(159,17): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(159,28): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(199,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(205,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(206,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(229,65): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(273,23): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(274,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(287,83): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(289,125): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(334,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(369,11): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
-  LINK : C:\SO2\TP-SO2\Servidor\x64\Debug\Servidor.exe não encontrado ou não compilado pelo o último link incremental; executando link completo
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(37,17): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(37,28): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(106,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(112,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(113,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(120,35): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(93,11): warning C4101: 'n': variável local não referenciada
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(146,65): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(152,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(223,83): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(225,125): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(278,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(295,12): warning C4101: 'hdll': variável local não referenciada
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(291,12): warning C4101: 'hFileMap': variável local não referenciada
   Servidor.vcxproj -> C:\SO2\TP-SO2\Servidor\x64\Debug\Servidor.exe

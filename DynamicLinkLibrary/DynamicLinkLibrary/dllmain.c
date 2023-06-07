@@ -167,10 +167,6 @@ void initGameData(SHARED_DATA* sharedData, HANDLE* hFileMap) {
     sharedData->memPar->bufferCircular.nConsumidores++;
     sharedData->id = sharedData->memPar->bufferCircular.nConsumidores;
     ReleaseMutex(sharedData->hMutex);
-
-   /* game->dwShutDown = 0;
-    game->dwLevel = 1;
-    game->bPaused = FALSE;*/
 }
 void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight) {
     sharedBoard->dwHeight = dwHeight;

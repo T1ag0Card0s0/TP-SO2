@@ -105,6 +105,6 @@ typedef struct GAME {
 void initRoads(ROAD* roads, DWORD dwNumOfRoads);
 void initRegestry(GAME* data);
 void moveObject(OBJECT* objData, WAY way);
-void initPlayers(OBJECT* players, DWORD dwNumRoads);
-typedef int (*PFUNC_CONS)(GAME*);
-typedef int (*PFUNC_UPDATE)(GAME*);
+typedef int (*PFUNC_CONS)(SHARED_DATA*,ROAD *,DWORD);
+typedef void (*PFUNC_INIT_SHARED_BOARD)(SHARED_BOARD*,DWORD);
+

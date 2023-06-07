@@ -90,7 +90,7 @@ typedef struct ROAD {
 
 DLL_API extern int consumidor(SHARED_DATA* sharedData, ROAD* road, DWORD dwNumRoads);
 DLL_API extern int produtor(SHARED_DATA* sharedData);
+DLL_API extern void initSharedBoard(SHARED_BOARD* sharedBoard, DWORD dwHeight);
 void commandExecutor(TCHAR command[], ROAD* road);
 void initGameData(SHARED_DATA * sharedData, HANDLE * hFileMap);
-void initSharedBoard(SHARED_BOARD * sharedBoard, DWORD dwHeight);
 void GoToXY(int column, int line);
