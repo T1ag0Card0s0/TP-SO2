@@ -1,17 +1,115 @@
-#include <windows.h>
-#include <windowsx.h>
-#include <tchar.h>
-#include <time.h>
-#include <stdlib.h>
+#include "sapo.h"
 
-#define MUTEX_SERVER _T("Server")
+LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
+	static PIPE_DATA pipeData;
+	static HANDLE hThread;
+	switch (messg) {
+	case WM_CREATE:
+		if (initPipeData(&pipeData)) DestroyWindow(hWnd);
+		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadPipeThread, (LPVOID)&pipeData, 0, NULL);
+		break;
+	case WM_KEYDOWN:
+		switch (wParam) {
+		case VK_UP:
+			writee(&pipeData, _T('U'));
+			break;
+		case VK_RIGHT:
+			writee(&pipeData, _T('R'));
+			break;
+		case VK_DOWN:
+			writee(&pipeData, _T('D'));
+			break;
+		case VK_LEFT:
+			writee(&pipeData, _T('L'));
+			break;
+		case VK_SPACE:
+			writee(&pipeData, _T('P'));
+			break;
+		}
+		break;
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
+	case WM_CLOSE:
+		CloseHandle(hThread);
+		if (IDYES == MessageBox(hWnd, _T("Deseja sair?"), _T("Sair"), MB_YESNO | MB_ICONQUESTION))
+			DestroyWindow(hWnd);
+		break;
+	default:
+		return(DefWindowProc(hWnd, messg, wParam, lParam));
+		break;
+	}
+	return(0);
+}
+DWORD WINAPI ReadPipeThread(LPVOID param) {
+	PIPE_DATA* pipeData = (PIPE_DATA*)param;
+	SHARED_BOARD sharedBoard;
+	DWORD n;
+	while (!pipeData->dwShutDown) {
+		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {
+			ZeroMemory(&pipeData->sharedBoard, sizeof(pipeData->sharedBoard));
+			ReadFile(pipeData->hPipe, &pipeData->sharedBoard, sizeof(pipeData->sharedBoard), &n, &pipeData->overlapRead);
+		}
+	}
 
-LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
-DWORD WINAPI CheckIfServerExit(LPVOID lpParam);
-int CheckNumberOfInstances(HANDLE hSemaphore);
-
-TCHAR szProgName[] = TEXT("Base");
-
+	ExitThread(0);
+}
+DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
+	// Abrir o evento
+	HANDLE hEvent;
+	hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
+	if (hEvent == NULL)
+	{
+		_tprintf(_T("Erro a abrir evento..\n\n"));
+		ExitThread(7);
+	}
+	// Esperar pelo evento
+	WaitForSingleObject(hEvent, INFINITE);
+	_tprintf(_T("Desconectado...\n"));
+	// Server saiu entao sai
+	CloseHandle(hEvent);
+	ExitProcess(0);
+}
+int CheckNumberOfInstances(HANDLE hSemaphore) {
+	/* if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
+		 _tprintf(_T("O servidor ainda nao esta a correr\n"));
+		 return 0;
+	 }*/
+	if (hSemaphore == NULL) {
+		_tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
+		return 0;
+	}
+	DWORD res = WaitForSingleObject(hSemaphore, 0); // tenta obter acesso ao semáforo
+	if (res == WAIT_FAILED) {
+		_tprintf(_T("Erro ao esperar pelo semáforo. Código do erro: %d\n"), GetLastError());
+		return 0;
+	}
+	else if (res == WAIT_TIMEOUT) { // se o semáforo não estiver disponível
+		_tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrar...\n"));
+		CloseHandle(hSemaphore);
+		return 0;
+	}
+	return 1;
+}
+int initPipeData(PIPE_DATA* pipeData) {
+	pipeData->hPipe = CreateFile(PIPE_NAME, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+	if (pipeData->hPipe == INVALID_HANDLE_VALUE) {
+		return 1;
+	}
+	ZeroMemory(&pipeData->overlapRead, sizeof(pipeData->overlapRead));
+	ZeroMemory(&pipeData->overlapWrite, sizeof(pipeData->overlapWrite));
+	pipeData->overlapRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	pipeData->overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	pipeData->dwShutDown = 0;
+	return 0;
+}
+int writee(PIPE_DATA* pipeData, TCHAR c) {
+	DWORD n;
+	if (!WriteFile(pipeData->hPipe, &c, sizeof(c), &n, &pipeData->overlapWrite)) {
+		return 1;
+	}
+	return 0;
+}
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
 
 	HANDLE hSemaphore;
@@ -29,7 +127,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 
 	// algumas cenas a null para ja so para funcionar
 	hServerTh = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit, NULL, 0, NULL);
-
+	TCHAR szProgName[] = TEXT("Base");
 	HWND hWnd;		// hWnd é o handler da janela, gerado mais abaixo por CreateWindow()
 	MSG lpMsg;		// MSG é uma estrutura definida no Windows para as mensagens
 	WNDCLASSEX wcApp;	// WNDCLASSEX é uma estrutura cujos membros servem para 
@@ -97,60 +195,4 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nC
 	ReleaseSemaphore(hSemaphore, 1, NULL); // libera o semáforo
 	CloseHandle(hSemaphore); // fecha o objeto de semáforo
 	return((int)lpMsg.wParam);	// Retorna sempre o parâmetro wParam da estrutura lpMsg
-}
-
-
-LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
-	switch (messg) {
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	case WM_CLOSE:
-		if (IDYES == MessageBox(hWnd, _T("Deseja sair?"), _T("Sair"), MB_YESNO | MB_ICONQUESTION))
-			DestroyWindow(hWnd);
-		break;
-	default:
-		return(DefWindowProc(hWnd, messg, wParam, lParam));
-		break;
-	}
-	return(0);
-}
-
-DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
-	// Abrir o evento
-	HANDLE hEvent;
-	hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, "ExitServer");
-	if (hEvent == NULL)
-	{
-		_tprintf(_T("Erro a abrir evento..\n\n"));
-		ExitThread(7);
-	}
-	// Esperar pelo evento
-	WaitForSingleObject(hEvent, INFINITE);
-	_tprintf(_T("Desconectado...\n"));
-	// Server saiu entao sai
-	CloseHandle(hEvent);
-	ExitProcess(0);
-}
-
-int CheckNumberOfInstances(HANDLE hSemaphore) {
-	/* if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
-		 _tprintf(_T("O servidor ainda nao esta a correr\n"));
-		 return 0;
-	 }*/
-	if (hSemaphore == NULL) {
-		_tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
-		return 0;
-	}
-	DWORD res = WaitForSingleObject(hSemaphore, 0); // tenta obter acesso ao semáforo
-	if (res == WAIT_FAILED) {
-		_tprintf(_T("Erro ao esperar pelo semáforo. Código do erro: %d\n"), GetLastError());
-		return 0;
-	}
-	else if (res == WAIT_TIMEOUT) { // se o semáforo não estiver disponível
-		_tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrar...\n"));
-		CloseHandle(hSemaphore);
-		return 0;
-	}
-	return 1;
 }

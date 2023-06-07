@@ -26,6 +26,7 @@
 #define KEY_ROADS TEXT("Roads")
 
 #define KEY_DIR TEXT("Software\\TPSO2\\")
+#define PIPE_NAME _T("\\\\.\\pipe\\TP-SO2")
 
 #define CAR _T('C')
 #define FROG _T('F')
@@ -88,7 +89,18 @@ typedef struct ROAD {
     OBJECT cars[MAX_CARS_PER_ROAD];
     OBJECT objects[MAX_CARS_PER_ROAD];
 }ROAD;
-
+typedef struct PLAYER_DATA {
+    HANDLE hPipe;
+    OVERLAPPED overlapRead,overlapWrite;
+    BOOL active;
+    OBJECT obj;
+}PLAYER_DATA;
+typedef struct PIPE_DATA {
+    PLAYER_DATA playerData[MAX_PLAYERS];
+    HANDLE hEvents[MAX_PLAYERS];
+    HANDLE hMutex;
+    DWORD dwNumClients;
+}PIPE_DATA;
 typedef struct GAME {
     DWORD dwLevel;
     DWORD dwShutDown;
@@ -98,7 +110,7 @@ typedef struct GAME {
     HANDLE hKey;
 
     SHARED_DATA sharedData;
-    OBJECT players[MAX_PLAYERS];
+    PIPE_DATA pipeData;
     ROAD roads[MAX_ROADS];
 }GAME;
 

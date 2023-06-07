@@ -13,6 +13,85 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
         *y = csbi.dwCursorPosition.Y;
     }
 }
+DWORD WINAPI ReceivePipeThread(LPVOID param) {
+    GAME* game = (GAME*)param;
+    HANDLE hEvents[MAX_PLAYERS];
+    DWORD ret,i,n;
+    TCHAR c;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
+    }
+    while (!game->dwShutDown) {
+        ret = WaitForMultipleObjects(MAX_PLAYERS, hEvents, FALSE, INFINITE);
+        i = ret - WAIT_OBJECT_0;
+        if (i >= 0 && i < MAX_PLAYERS) {
+            if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &n, FALSE)) {
+                if (n > 0) {
+                    _tprintf(TEXT("[SERVIDOR] Recebi %d bytes: '%c' cliente %d... (ReadFile)\n"), n, c, i);
+                }
+                ZeroMemory(&n, sizeof(n));
+                ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
+                ReadFile(game->pipeData.playerData[i].hPipe, &c, sizeof(c), &n, &game->pipeData.playerData[i].overlapRead);
+            }
+        }
+    }
+    ExitThread(0);
+}
+DWORD WINAPI WritePipeThread(LPVOID param) {
+    GAME* game = (GAME*)param;
+    DWORD n;
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, _T("SendPipeEvent"));
+    if (hEvent == NULL) {
+        _tprintf(_T("[ERRO] Abrir evento para envio pelo pipe\n"));
+        ExitThread(-1);
+    }
+    while (!game->dwShutDown) {
+        WaitForSingleObject(hEvent, INFINITE);
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (game->pipeData.playerData[i].active) {
+                WriteFile(game->pipeData.playerData[i].hPipe,
+                    &game->sharedData.memPar->sharedBoard,
+                    sizeof(game->sharedData.memPar->sharedBoard),
+                    &n,
+                    &game->pipeData.playerData[i].overlapWrite);
+            }
+        }
+        ResetEvent(hEvent);
+    }
+    ExitThread(0);
+}
+DWORD WINAPI PipeManagerThread(LPVOID param) {
+    GAME* game = (GAME*)param;
+    DWORD nBytes;
+    game->pipeData.dwNumClients = 0;
+    while (!game->dwShutDown) {
+        DWORD offset = WaitForMultipleObjects(MAX_PLAYERS, game->pipeData.hEvents, FALSE, INFINITE);
+        DWORD i = offset - WAIT_OBJECT_0;
+        if (i >= 0 && i < MAX_PLAYERS) {
+            if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &nBytes, FALSE)) {
+                ResetEvent(game->pipeData.hEvents[i]);
+                WaitForSingleObject(game->pipeData.hMutex,INFINITE);
+                // inicializar playerData
+                game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH;
+                game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+                game->pipeData.playerData[i].obj.dwLastX = game->pipeData.playerData[i].obj.dwX;
+                game->pipeData.playerData[i].obj.dwLastY = game->pipeData.playerData[i].obj.dwY;
+                game->pipeData.playerData[i].obj.c = FROG;
+                game->pipeData.playerData[i].active = TRUE;
+                ReleaseMutex(game->pipeData.hMutex);
+                game->pipeData.dwNumClients++;
+                _tprintf(_T("[SERVIDOR] Chegou um novo jogador\n"));
+            }
+        }
+    }
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (!DisconnectNamedPipe(game->pipeData.playerData[i].hPipe)) {
+            _tprintf(TEXT("[ERRO] Desligar o pipe! (DisconnectNamedPipe)"));
+            ExitThread(-1);
+        }
+    }
+    ExitThread(0);
+}
 DWORD WINAPI ThreadConsumidor(LPVOID param) {
     //dll chamar consumidor
     GAME* game = (GAME*)param;
@@ -40,7 +119,7 @@ DWORD WINAPI CMDThread(LPVOID param) {
         _fgetts(command_line, TAM, stdin);
         _stscanf_s(command_line, _T("%s %u"), cmd, TAM, &value);
 
-        if (!_tcscmp(cmd, _T("exit"))) { game->dwShutDown = 1; break; }
+        if (!_tcscmp(cmd, _T("exit"))) { game->dwShutDown = 1; game->sharedData.terminar = 1; break; }
 
         if (!(_tcscmp(cmd, _T("setf")))) {
             if (value < 1 || value > MAX_ROADS) {
@@ -91,11 +170,12 @@ DWORD WINAPI CMDThread(LPVOID param) {
 DWORD WINAPI UpdateThread(LPVOID param) {
     GAME* game = (GAME*)param;
     DWORD n;
-    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT);
+    HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT),hSendPipeEvent = OpenEvent(EVENT_ALL_ACCESS,FALSE,_T("SendPipeEvent"));
     if (hEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
         ExitThread(-1);
     }
+    
     PFUNC_INIT_SHARED_BOARD pfunc;
     if ((pfunc = (PFUNC_INIT_SHARED_BOARD)GetProcAddress(game->sharedData.hdll, "initSharedBoard")) == NULL) ExitThread(-1);
     while (!game->dwShutDown) {
@@ -123,6 +203,7 @@ DWORD WINAPI UpdateThread(LPVOID param) {
                 }
             }
         }
+        SetEvent(hSendPipeEvent);
         ResetEvent(hEvent);
     }
     ExitThread(0);
@@ -284,13 +365,48 @@ void initRoads(ROAD* roads, DWORD dwInitSpeed) {
         }
     }
 }
+void initPipeData(PIPE_DATA* pipeData) {
+    HANDLE hEventTemp;
+    pipeData->hMutex = CreateMutex(NULL, FALSE, NULL);
+    if (pipeData->hMutex == NULL) {
+        _tprintf(_T("[ERRO] Criar Mutex para pipe\n"));
+        return;
+    }
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        pipeData->playerData[i].hPipe = CreateNamedPipe(PIPE_NAME, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+            PIPE_WAIT | PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE,
+            MAX_PLAYERS,
+            sizeof(TCHAR),
+            sizeof(SHARED_BOARD),
+            NMPWAIT_USE_DEFAULT_WAIT,
+            NULL);
+        if (pipeData->playerData[i].hPipe == INVALID_HANDLE_VALUE) {
+            _tprintf(_T("[ERRO] Criar pipe para o jogador %d\n"), i);
+            return;
+        }
+        hEventTemp = CreateEvent(NULL, TRUE, FALSE, NULL);
+        if (hEventTemp == NULL) {
+            _tprintf(_T("[ERRO] Criar evento para o jogador %d\n"), i);
+            return;
+        }
+        pipeData->playerData[i].active = FALSE;
+        ZeroMemory(&pipeData->playerData[i].overlapRead, sizeof(pipeData->playerData[i].overlapRead));
+        ZeroMemory(&pipeData->playerData[i].overlapWrite, sizeof(pipeData->playerData[i].overlapWrite));
+        pipeData->playerData[i].overlapRead.hEvent = hEventTemp;
+        pipeData->playerData[i].overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+        pipeData->hEvents[i] = hEventTemp;
 
+        ConnectNamedPipe(pipeData->playerData[i].hPipe, &pipeData->playerData[i].overlapRead);
+        ReadFile(pipeData->playerData[i].hPipe, NULL, 0, NULL, &pipeData->playerData[i].overlapRead);
+
+    }
+}
 
 int _tmain(int argc, TCHAR* argv[]) {
-    HANDLE hExistServer, hUpdateEvent, hExitEvent;
+    HANDLE hExistServer, hUpdateEvent, hExitEvent,hSendPipeEvent;
     HANDLE hFileMap;
    
-    HANDLE hThread[3];
+    HANDLE hThread[6];
     HANDLE hMutexRoad;
     GAME game;
     HANDLE hdll;
@@ -302,7 +418,8 @@ int _tmain(int argc, TCHAR* argv[]) {
     hExistServer = CreateMutex(NULL, TRUE, MUTEX_SERVER);
     hExitEvent = CreateEvent(NULL, TRUE, FALSE, EXIT_EVENT);
     hUpdateEvent = CreateEvent(NULL, TRUE, FALSE, UPDATE_EVENT);
-    if (GetLastError() == ERROR_ALREADY_EXISTS || hExitEvent == NULL || hUpdateEvent == NULL) {
+    hSendPipeEvent = CreateEvent(NULL, TRUE, FALSE, _T("SendPipeEvent"));
+    if (GetLastError() == ERROR_ALREADY_EXISTS || hExitEvent == NULL || hUpdateEvent == NULL||hSendPipeEvent == NULL) {
         _tprintf(_T("[ERRO] Erro a iniciar o programa\n"));
         ExitProcess(1);
     }
@@ -315,6 +432,7 @@ int _tmain(int argc, TCHAR* argv[]) {
     initRegestry(&game);
     hThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game, 0, NULL);
     initRoads(game.roads, game.dwInitSpeed);
+    initPipeData(&game.pipeData);
     //lançamos as estradas ao mesmo tempo
     hMutexRoad = CreateMutex(NULL, FALSE, MUTEX_ROAD);
     for (int i = 0; i < MAX_ROADS; i++) {
@@ -323,8 +441,10 @@ int _tmain(int argc, TCHAR* argv[]) {
     }
     hThread[1] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CMDThread, (LPVOID)&game, 0, NULL);
     hThread[2] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UpdateThread, (LPVOID)&game, 0, NULL);
-
-    WaitForMultipleObjects(3, hThread, TRUE, INFINITE);
+    hThread[3] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)PipeManagerThread, (LPVOID)&game, 0, NULL);
+    hThread[4] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)WritePipeThread, (LPVOID)&game, 0, NULL);
+    hThread[5] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceivePipeThread, (LPVOID)&game, 0, NULL);
+    WaitForMultipleObjects(6, hThread, TRUE, INFINITE);
 
     SetEvent(hExitEvent);
     CloseHandle(game.hKey);
