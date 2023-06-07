@@ -289,7 +289,8 @@ void initRoads(ROAD* roads, DWORD dwInitSpeed) {
 int _tmain(int argc, TCHAR* argv[]) {
     HANDLE hExistServer, hUpdateEvent, hExitEvent;
     HANDLE hFileMap;
-    HANDLE hUpdateThread, hCMDThread, hThreadConsumidor;
+   
+    HANDLE hThread[3];
     HANDLE hMutexRoad;
     GAME game;
     HANDLE hdll;
@@ -312,7 +313,7 @@ int _tmain(int argc, TCHAR* argv[]) {
     game.dwLevel = 1;
     game.bPaused = FALSE;
     initRegestry(&game);
-    hThreadConsumidor = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game, 0, NULL);
+    hThread[0] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ThreadConsumidor, (LPVOID)&game, 0, NULL);
     initRoads(game.roads, game.dwInitSpeed);
     //lançamos as estradas ao mesmo tempo
     hMutexRoad = CreateMutex(NULL, FALSE, MUTEX_ROAD);
@@ -320,11 +321,10 @@ int _tmain(int argc, TCHAR* argv[]) {
         game.roads[i].hMutex = hMutexRoad;
         ResumeThread(game.roads[i].hThread);
     }
-    hCMDThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CMDThread, (LPVOID)&game, 0, NULL);
-    hUpdateThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UpdateThread, (LPVOID)&game, 0, NULL);
+    hThread[1] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CMDThread, (LPVOID)&game, 0, NULL);
+    hThread[2] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)UpdateThread, (LPVOID)&game, 0, NULL);
 
-    WaitForSingleObject(hUpdateThread, INFINITE);
-    WaitForSingleObject(hCMDThread, INFINITE);
+    WaitForMultipleObjects(3, hThread, TRUE, INFINITE);
 
     SetEvent(hExitEvent);
     CloseHandle(game.hKey);
