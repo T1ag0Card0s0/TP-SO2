@@ -3,10 +3,36 @@
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	static PIPE_DATA pipeData;
 	static HANDLE hThread;
+	PAINTSTRUCT ps;
+	HANDLE hdc;
+	HBITMAP hBitMap1,hBitMap2;
+	HDC hdcMem;
 	switch (messg) {
 	case WM_CREATE:
 		if (initPipeData(&pipeData)) DestroyWindow(hWnd);
 		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadPipeThread, (LPVOID)&pipeData, 0, NULL);
+		break;
+	case WM_PAINT :
+		hdc = BeginPaint(hWnd,&ps);
+		hdcMem = CreateCompatibleDC(hdc);
+		hBitMap1 = (HBITMAP)LoadImage(NULL, _T("car.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBitMap2 = (HBITMAP)LoadImage(NULL, _T("frog.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		for (int i = 0; i < pipeData.sharedBoard.dwHeight; i++) {
+			for (int j = 0; j < pipeData.sharedBoard.dwWidth; j++) {
+				if (pipeData.sharedBoard.board[i][j] == _T('C')) {
+					SelectObject(hdcMem, hBitMap1);
+					BitBlt(hdc,0, 0, 50, 50, hdcMem, 0, 0, SRCCOPY);
+				}
+			else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
+					SelectObject(hdcMem, hBitMap2);
+					BitBlt(hdc, 50, 50, 50, 50, hdcMem, 0, 0, SRCCOPY);
+				}
+			}
+		}
+		DeleteDC(hdcMem);
+		DeleteObject(hBitMap1);
+		DeleteObject(hBitMap2);
+		EndPaint(hWnd, &ps);
 		break;
 	case WM_KEYDOWN:
 		switch (wParam) {
@@ -46,7 +72,7 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 	SHARED_BOARD sharedBoard;
 	DWORD n;
 	while (!pipeData->dwShutDown) {
-		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {
+		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {			
 			ZeroMemory(&pipeData->sharedBoard, sizeof(pipeData->sharedBoard));
 			ReadFile(pipeData->hPipe, &pipeData->sharedBoard, sizeof(pipeData->sharedBoard), &n, &pipeData->overlapRead);
 		}
@@ -100,6 +126,7 @@ int initPipeData(PIPE_DATA* pipeData) {
 	pipeData->overlapRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	pipeData->overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	pipeData->dwShutDown = 0;
+	pipeData->bNewBoard = FALSE;
 	return 0;
 }
 int writee(PIPE_DATA* pipeData, TCHAR c) {

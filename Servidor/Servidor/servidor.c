@@ -43,7 +43,10 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if (c == _T('P')) {
                         game->bPaused = TRUE;
-                  
+                        way = STOP;
+                    }
+                    else {
+                        way = STOP;
                     }
                     moveObject(&game->pipeData.playerData[i].obj, way);
                 }

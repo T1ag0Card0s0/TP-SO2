@@ -25,6 +25,7 @@ typedef struct PIPE_DATA {
     OVERLAPPED overlapRead, overlapWrite;
     SHARED_BOARD sharedBoard;
     DWORD dwShutDown;
+    BOOL bNewBoard;
 }PIPE_DATA;
 #define MUTEX_SERVER _T("Server")
 
