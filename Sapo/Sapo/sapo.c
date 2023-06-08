@@ -51,7 +51,6 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 			ReadFile(pipeData->hPipe, &pipeData->sharedBoard, sizeof(pipeData->sharedBoard), &n, &pipeData->overlapRead);
 		}
 	}
-
 	ExitThread(0);
 }
 DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {

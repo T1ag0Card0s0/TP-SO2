@@ -28,6 +28,24 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &n, FALSE)) {
                 if (n > 0) {
                     _tprintf(TEXT("[SERVIDOR] Recebi %d bytes: '%c' cliente %d... (ReadFile)\n"), n, c, i);
+                    WAY way;
+                    if (c == _T('U')) {
+                        way = UP;
+                    }
+                    else if (c == _T('R')) {
+                        way = RIGHT;
+                    }
+                    else if (c == _T('D')) {
+                        way = DOWN;
+                    }
+                    else if (c == _T('L')) {
+                        way = LEFT;
+                    }
+                    else if (c == _T('P')) {
+                        game->bPaused = TRUE;
+                  
+                    }
+                    moveObject(&game->pipeData.playerData[i].obj, way);
                 }
                 ZeroMemory(&n, sizeof(n));
                 ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
@@ -54,6 +72,7 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                     sizeof(game->sharedData.memPar->sharedBoard),
                     &n,
                     &game->pipeData.playerData[i].overlapWrite);
+
             }
         }
         ResetEvent(hEvent);
@@ -67,7 +86,7 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
     while (!game->dwShutDown) {
         DWORD offset = WaitForMultipleObjects(MAX_PLAYERS, game->pipeData.hEvents, FALSE, INFINITE);
         DWORD i = offset - WAIT_OBJECT_0;
-        if (i >= 0 && i < MAX_PLAYERS) {
+        if (i >= 0 && i < MAX_PLAYERS&&game->pipeData.playerData[i].active == FALSE) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &nBytes, FALSE)) {
                 ResetEvent(game->pipeData.hEvents[i]);
                 WaitForSingleObject(game->pipeData.hMutex,INFINITE);
@@ -203,6 +222,12 @@ DWORD WINAPI UpdateThread(LPVOID param) {
                 }
             }
         }
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (game->pipeData.playerData[i].active) {
+                game->sharedData.memPar->sharedBoard.board[game->pipeData.playerData[i].obj.dwLastY][game->pipeData.playerData[i].obj.dwLastX] = _T(' ');
+                game->sharedData.memPar->sharedBoard.board[game->pipeData.playerData[i].obj.dwY][game->pipeData.playerData[i].obj.dwX] = game->pipeData.playerData[i].obj.c;
+            }
+        }
         SetEvent(hSendPipeEvent);
         ResetEvent(hEvent);
     }
@@ -277,26 +302,26 @@ void moveObject(OBJECT* objData, WAY way) {
     }
 
     switch (way) {
-    case UP: {
-        if (objData->dwY - 1 <= 0)break;
-        objData->dwY--;
-        break;
-    }
-    case DOWN: {
-        if (objData->dwY + 1 >= MAX_ROADS)break;
-        objData->dwY++;
-        break;
-    }
-    case LEFT: {
-        if (objData->dwX - 1 <= 0) objData->dwX = MAX_WIDTH;
-        objData->dwX--;
-        break;
-    }
-    case RIGHT: {
-        if (objData->dwX + 1 >= MAX_WIDTH) objData->dwX = 0;
-        objData->dwX++;
-        break;
-    }
+        case UP: {
+            if (objData->dwY - 1 <= 0)break;
+            objData->dwY--;
+            break;
+        }
+        case DOWN: {
+            if (objData->dwY + 1 >= MAX_ROADS)break;
+            objData->dwY++;
+            break;
+        }
+        case LEFT: {
+            if (objData->dwX - 1 <= 0) objData->dwX = MAX_WIDTH;
+            objData->dwX--;
+            break;
+        }
+        case RIGHT: {
+            if (objData->dwX + 1 >= MAX_WIDTH) objData->dwX = 0;
+            objData->dwX++;
+            break;
+        }
     }
 }
 void initRegestry(GAME* data) {
