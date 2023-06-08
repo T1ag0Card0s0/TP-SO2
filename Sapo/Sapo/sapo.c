@@ -5,35 +5,79 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	static HANDLE hThread;
 	PAINTSTRUCT ps;
 	HANDLE hdc;
-	HBITMAP hBitMap1,hBitMap2;
-	HDC hdcMem;
+	RECT rect;
 	switch (messg) {
 	case WM_CREATE:
+		pipeData.paintData.hBmp[0] = (HBITMAP)LoadImage(NULL, TEXT("car.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		pipeData.paintData.hBmp[1] = (HBITMAP)LoadImage(NULL, TEXT("frog.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		pipeData.paintData.hBmp[2] = (HBITMAP)LoadImage(NULL, TEXT("passeio.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		GetObject(pipeData.paintData.hBmp[0], sizeof(pipeData.paintData.bmp[0]), &pipeData.paintData.bmp[0]);
+		GetObject(pipeData.paintData.hBmp[1], sizeof(pipeData.paintData.bmp[1]), &pipeData.paintData.bmp[1]);
+		GetObject(pipeData.paintData.hBmp[2], sizeof(pipeData.paintData.bmp[2]), &pipeData.paintData.bmp[2]);
+		hdc = GetDC(hWnd);
+		pipeData.paintData.bmpDC[0] = CreateCompatibleDC(hdc);
+		SelectObject(pipeData.paintData.bmpDC[0], pipeData.paintData.hBmp[0]);
+		pipeData.paintData.bmpDC[1] = CreateCompatibleDC(hdc);
+		SelectObject(pipeData.paintData.bmpDC[1], pipeData.paintData.hBmp[1]);
+		pipeData.paintData.bmpDC[2] = CreateCompatibleDC(hdc);
+		SelectObject(pipeData.paintData.bmpDC[2], pipeData.paintData.hBmp[2]);
+		pipeData.paintData.hMutex = CreateMutex(NULL, FALSE, NULL);
+		ReleaseDC(hWnd, hdc);
+		pipeData.paintData.memDC = NULL;
+
 		if (initPipeData(&pipeData)) DestroyWindow(hWnd);
 		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadPipeThread, (LPVOID)&pipeData, 0, NULL);
 		break;
 	case WM_PAINT :
-		hdc = BeginPaint(hWnd,&ps);
-		hdcMem = CreateCompatibleDC(hdc);
-		hBitMap1 = (HBITMAP)LoadImage(NULL, _T("car.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBitMap2 = (HBITMAP)LoadImage(NULL, _T("frog.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hdc = BeginPaint(hWnd, &ps);
+		GetClientRect(hWnd, &rect);
+		if (pipeData.paintData.memDC == NULL) {
+			pipeData.paintData.memDC = CreateCompatibleDC(hdc);
+
+			pipeData.paintData.hBitmapDB = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
+			SelectObject(pipeData.paintData.memDC, pipeData.paintData.hBitmapDB);
+			DeleteObject(pipeData.paintData.hBitmapDB);
+		}
+		FillRect(pipeData.paintData.memDC, &rect, CreateSolidBrush(RGB(0,0,0)));
+
+		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
 		for (int i = 0; i < pipeData.sharedBoard.dwHeight; i++) {
 			for (int j = 0; j < pipeData.sharedBoard.dwWidth; j++) {
 				if (pipeData.sharedBoard.board[i][j] == _T('C')) {
-					SelectObject(hdcMem, hBitMap1);
-					BitBlt(hdc,0, 0, 50, 50, hdcMem, 0, 0, SRCCOPY);
+					BitBlt(pipeData.paintData.memDC,
+						j * 50, i * 50,
+						pipeData.paintData.bmp[0].bmWidth,
+						pipeData.paintData.bmp[0].bmHeight,
+						pipeData.paintData.bmpDC[0],
+						0, 0, SRCCOPY);
 				}
-			else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
-					SelectObject(hdcMem, hBitMap2);
-					BitBlt(hdc, 50, 50, 50, 50, hdcMem, 0, 0, SRCCOPY);
+				else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
+					BitBlt(pipeData.paintData.memDC,
+						j * 50, i * 50,
+						pipeData.paintData.bmp[1].bmWidth,
+						pipeData.paintData.bmp[1].bmHeight,
+						pipeData.paintData.bmpDC[1],
+						0, 0, SRCCOPY);
+				}
+				else if (pipeData.sharedBoard.board[i][j] == _T('-')) {
+					BitBlt(pipeData.paintData.memDC,
+						j * 50, i * 50,
+						pipeData.paintData.bmp[2].bmWidth,
+						pipeData.paintData.bmp[2].bmHeight,
+						pipeData.paintData.bmpDC[2],
+						0, 0, SRCCOPY);
 				}
 			}
 		}
-		DeleteDC(hdcMem);
-		DeleteObject(hBitMap1);
-		DeleteObject(hBitMap2);
+		ReleaseMutex(pipeData.paintData.hMutex);
+		BitBlt(hdc, 0, 0, rect.right, rect.bottom, pipeData.paintData.memDC, 0, 0, SRCCOPY);
+		// Encerra a pintura, que substitui o ReleaseDC
 		EndPaint(hWnd, &ps);
 		break;
+
+	case WM_ERASEBKGND:
+		return TRUE;
+
 	case WM_KEYDOWN:
 		switch (wParam) {
 		case VK_UP:
@@ -57,6 +101,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		PostQuitMessage(0);
 		break;
 	case WM_CLOSE:
+		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
 		CloseHandle(hThread);
 		if (IDYES == MessageBox(hWnd, _T("Deseja sair?"), _T("Sair"), MB_YESNO | MB_ICONQUESTION))
 			DestroyWindow(hWnd);
@@ -66,15 +111,22 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	}
 	return(0);
+
 }
 DWORD WINAPI ReadPipeThread(LPVOID param) {
 	PIPE_DATA* pipeData = (PIPE_DATA*)param;
 	SHARED_BOARD sharedBoard;
 	DWORD n;
 	while (!pipeData->dwShutDown) {
-		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {			
-			ZeroMemory(&pipeData->sharedBoard, sizeof(pipeData->sharedBoard));
-			ReadFile(pipeData->hPipe, &pipeData->sharedBoard, sizeof(pipeData->sharedBoard), &n, &pipeData->overlapRead);
+		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {	
+			if (n > 0) {
+				WaitForSingleObject(pipeData->paintData.hMutex, INFINITE);
+				pipeData->sharedBoard = sharedBoard;
+				ReleaseMutex(pipeData->paintData.hMutex);
+				InvalidateRect(pipeData->paintData.hWnd, NULL, FALSE);
+			}
+			ZeroMemory(&sharedBoard, sizeof(sharedBoard));
+			ReadFile(pipeData->hPipe, &sharedBoard, sizeof(sharedBoard), &n, &pipeData->overlapRead);
 		}
 	}
 	ExitThread(0);

@@ -20,10 +20,21 @@ typedef struct SHARED_BOARD {
     DWORD dwHeight;
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
+typedef struct PAINT_DATA {
+    HBITMAP hBmp[3];
+    HDC bmpDC[3];
+    BITMAP bmp[3];
+    HWND hWnd;
+    HANDLE hMutex;
+    HDC memDC;
+    HBITMAP hBitmapDB;
+
+}PAINT_DATA;
 typedef struct PIPE_DATA {
     HANDLE hPipe;
     OVERLAPPED overlapRead, overlapWrite;
     SHARED_BOARD sharedBoard;
+    PAINT_DATA paintData;
     DWORD dwShutDown;
     BOOL bNewBoard;
 }PIPE_DATA;
