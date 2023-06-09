@@ -24,6 +24,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			pipeData.paintData.bmpDC[i] = CreateCompatibleDC(hdc);
 			SelectObject(pipeData.paintData.bmpDC[i], pipeData.paintData.hBmp[i]);
 		}
+		GetClientRect(hWnd, &rect);
+		pipeData.paintData.XOffset = (rect.right / 2) - ((MAX_WIDTH*30) / 2);
+		pipeData.paintData.YOffset = (rect.bottom / 2) - (((MAX_ROADS+4)*30) / 2);
 		pipeData.paintData.hMutex = CreateMutex(NULL, FALSE, NULL);
 		ReleaseDC(hWnd, hdc);
 		pipeData.paintData.memDC = NULL;
@@ -48,8 +51,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			for (int j = 0; j < pipeData.sharedBoard.dwWidth; j++) {
 				if (pipeData.sharedBoard.board[i][j] == _T('<')) {
 					BitBlt(pipeData.paintData.memDC,
-						j * pipeData.paintData.bmp[0].bmWidth,
-						i * pipeData.paintData.bmp[0].bmHeight,
+						pipeData.paintData.XOffset + j * pipeData.paintData.bmp[0].bmWidth,
+						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[0].bmHeight,
 						pipeData.paintData.bmp[0].bmWidth,
 						pipeData.paintData.bmp[0].bmHeight,
 						pipeData.paintData.bmpDC[0],
@@ -57,8 +60,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				}
 				else if (pipeData.sharedBoard.board[i][j] == _T('>')) {
 					BitBlt(pipeData.paintData.memDC,
-						j * pipeData.paintData.bmp[1].bmWidth,
-						i * pipeData.paintData.bmp[1].bmHeight,
+						pipeData.paintData.XOffset + j * pipeData.paintData.bmp[1].bmWidth,
+						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[1].bmHeight,
 						pipeData.paintData.bmp[1].bmWidth,
 						pipeData.paintData.bmp[1].bmHeight,
 						pipeData.paintData.bmpDC[1],
@@ -67,24 +70,24 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
 					if (pipeData.sentido == _T('R')) {
 						BitBlt(pipeData.paintData.memDC,
-							j * pipeData.paintData.bmp[2].bmWidth,
-							i * pipeData.paintData.bmp[2].bmHeight,
+							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[2].bmWidth,
+							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[2].bmHeight,
 							pipeData.paintData.bmp[2].bmWidth,
 							pipeData.paintData.bmp[2].bmHeight,
 							pipeData.paintData.bmpDC[2],
 							0, 0, SRCCOPY);
 					}else if (pipeData.sentido == _T('D')) {
 						BitBlt(pipeData.paintData.memDC,
-							j * pipeData.paintData.bmp[3].bmWidth,
-							i * pipeData.paintData.bmp[3].bmHeight,
+							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[3].bmWidth,
+							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[3].bmHeight,
 							pipeData.paintData.bmp[3].bmWidth,
 							pipeData.paintData.bmp[3].bmHeight,
 							pipeData.paintData.bmpDC[3],
 							0, 0, SRCCOPY);
 					}else  if (pipeData.sentido == _T('L')) {
 						BitBlt(pipeData.paintData.memDC,
-							j * pipeData.paintData.bmp[4].bmWidth,
-							i * pipeData.paintData.bmp[4].bmHeight,
+							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[4].bmWidth,
+							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[4].bmHeight,
 							pipeData.paintData.bmp[4].bmWidth,
 							pipeData.paintData.bmp[4].bmHeight,
 							pipeData.paintData.bmpDC[4],
@@ -92,8 +95,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 					}
 					else {
 						BitBlt(pipeData.paintData.memDC,
-							j * pipeData.paintData.bmp[5].bmWidth,
-							i * pipeData.paintData.bmp[5].bmHeight,
+							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[5].bmWidth,
+							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[5].bmHeight,
 							pipeData.paintData.bmp[5].bmWidth,
 							pipeData.paintData.bmp[5].bmHeight,
 							pipeData.paintData.bmpDC[5],
@@ -102,8 +105,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				}
 				else if (pipeData.sharedBoard.board[i][j] == _T('-')) {
 					BitBlt(pipeData.paintData.memDC,
-						j * pipeData.paintData.bmp[6].bmWidth,
-						i * pipeData.paintData.bmp[6].bmHeight,
+						pipeData.paintData.XOffset + j * pipeData.paintData.bmp[6].bmWidth,
+						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[6].bmHeight,
 						pipeData.paintData.bmp[6].bmWidth,
 						pipeData.paintData.bmp[6].bmHeight,
 						pipeData.paintData.bmpDC[6],
@@ -111,8 +114,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				}
 				else if (pipeData.sharedBoard.board[i][j] == _T('X')) {
 					BitBlt(pipeData.paintData.memDC,
-						j * pipeData.paintData.bmp[7].bmWidth,
-						i * pipeData.paintData.bmp[7].bmHeight,
+						pipeData.paintData.XOffset+j * pipeData.paintData.bmp[7].bmWidth,
+						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[7].bmHeight,
 						pipeData.paintData.bmp[7].bmWidth,
 						pipeData.paintData.bmp[7].bmHeight,
 						pipeData.paintData.bmpDC[7],
@@ -128,6 +131,14 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 	case WM_ERASEBKGND:
 		return TRUE;
+	case WM_SIZE:
+		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
+		pipeData.paintData.XOffset = (LOWORD(lParam) / 2) - ((MAX_WIDTH * 30) / 2);
+		pipeData.paintData.YOffset = (HIWORD(lParam) / 2) - (((MAX_ROADS + 4) * 30) / 2);
+		pipeData.paintData.memDC = NULL; // metemos novamente a NULL para que caso haja um resize na janela no WM_PAINT a janela em memoria é sempre atualizada com o tamanho novo
+		ReleaseMutex(pipeData.paintData.hMutex);
+
+		break;
 
 	case WM_KEYDOWN:
 		switch (wParam) {

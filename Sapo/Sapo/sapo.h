@@ -29,7 +29,7 @@ typedef struct PAINT_DATA {
     HANDLE hMutex;
     HDC memDC;
     HBITMAP hBitmapDB;
-
+    DWORD XOffset, YOffset;
 }PAINT_DATA;
 typedef struct PIPE_DATA {
     HANDLE hPipe;

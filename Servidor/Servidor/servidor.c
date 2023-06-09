@@ -89,18 +89,20 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
     while (!game->dwShutDown) {
         DWORD offset = WaitForMultipleObjects(MAX_PLAYERS, game->pipeData.hEvents, FALSE, INFINITE);
         DWORD i = offset - WAIT_OBJECT_0;
-        if (i >= 0 && i < MAX_PLAYERS&&game->pipeData.playerData[i].active==FALSE) {
+        if (i >= 0 && i < MAX_PLAYERS) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &nBytes, FALSE)) {
                 ResetEvent(game->pipeData.hEvents[i]);
-                WaitForSingleObject(game->pipeData.hMutex,INFINITE);
-                // inicializar playerData
-                game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH;
-                game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
-                game->pipeData.playerData[i].obj.c = FROG;
-                game->pipeData.playerData[i].active = TRUE;
-                ReleaseMutex(game->pipeData.hMutex);
-                game->pipeData.dwNumClients++;
-                _tprintf(_T("[SERVIDOR] Chegou um novo jogador\n"));
+                if (nBytes == 0) {
+                    WaitForSingleObject(game->pipeData.hMutex, INFINITE);
+                    // inicializar playerData
+                    game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH;
+                    game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+                    game->pipeData.playerData[i].obj.c = FROG;
+                    game->pipeData.playerData[i].active = TRUE;
+                    ReleaseMutex(game->pipeData.hMutex);
+                    game->pipeData.dwNumClients++;
+                    _tprintf(_T("[SERVIDOR] Chegou um novo jogador\n"));
+                }
             }
         }
     }
