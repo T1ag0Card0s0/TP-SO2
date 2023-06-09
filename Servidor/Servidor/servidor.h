@@ -71,7 +71,7 @@ typedef struct SHARED_DATA {
 typedef enum WAY { UP, DOWN, LEFT, RIGHT, STOP }WAY;
 typedef struct OBJECT {
     DWORD dwX, dwY;
-    DWORD dwLastX, dwLastY;
+//    DWORD dwLastX, dwLastY;
     TCHAR c;
 }OBJECT;
 typedef struct ROAD {
@@ -95,7 +95,6 @@ typedef struct PLAYER_DATA {
     OVERLAPPED overlapRead,overlapWrite;
     BOOL active;
     OBJECT obj;
-    TCHAR underSymbol;
 }PLAYER_DATA;
 typedef struct PIPE_DATA {
     PLAYER_DATA playerData[MAX_PLAYERS];

@@ -1,2 +1,4 @@
-﻿  LINK : C:\SO2\TP-SO2\Operador\x64\Debug\Operador.exe não encontrado ou não compilado pelo o último link incremental; executando link completo
+﻿  operador.c
+C:\SO2\TP-SO2\Operador\Operador\operador.c(18,19): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Operador\Operador\operador.c(70,11): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
   Operador.vcxproj -> C:\SO2\TP-SO2\Operador\x64\Debug\Operador.exe

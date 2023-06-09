@@ -22,7 +22,7 @@ DWORD WINAPI ShowBoard(LPVOID param) {
             pos.Y++;
         }
         pos.Y = 1;
-        ResetEvent(hEvent);
+       // ResetEvent(hEvent);
 
 
     }

@@ -68,7 +68,6 @@ typedef struct SHARED_DATA {
 typedef enum WAY { UP, DOWN, LEFT, RIGHT, STOP }WAY;
 typedef struct OBJECT {
     DWORD dwX, dwY;
-    DWORD dwLastX, dwLastY;
     TCHAR c;
 }OBJECT;
 typedef struct ROAD {
