@@ -123,7 +123,7 @@ void commandExecutor(TCHAR command[], ROAD* road) {
         road[index].objects[num].dwY = index + 2;
     }
     else if (!_tcscmp(cmd, _T("invert"))) {
-        if (road[index].way == LEFT)road[index].way = RIGHT;
+        if (road[index].way == LEFT) road[index].way = RIGHT;
         else if (road[index].way == RIGHT)road[index].way = LEFT;
     }
 }

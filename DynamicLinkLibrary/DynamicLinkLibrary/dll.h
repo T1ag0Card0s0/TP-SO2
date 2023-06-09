@@ -26,7 +26,8 @@
 #define MUTEX_PROD _T("MutexProd")
 #define SHARED_MEMORY_NAME _T("ShareMemory")
 #define UPDATE_EVENT _T("UpdateEvent")
-#define CAR _T('C')
+#define CAR_RIGHT _T('<')
+#define CAR_LEFT _T('>')
 #define FROG _T('F')
 //estrutura para o buffer circular
 typedef struct CELULA_BUFFER {

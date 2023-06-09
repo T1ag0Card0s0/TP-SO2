@@ -16,8 +16,9 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
 DWORD WINAPI ReceivePipeThread(LPVOID param) {
     GAME* game = (GAME*)param;
     HANDLE hEvents[MAX_PLAYERS];
-    DWORD ret,i,n;
+    DWORD ret,i,n,count = 0;
     TCHAR c;
+    BOOL sideWalk = FALSE;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
     }
@@ -36,7 +37,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         way = RIGHT;
                     }
                     else if (c == _T('D')) {
-                        way = DOWN;
+                        way = DOWN;   
                     }
                     else if (c == _T('L')) {
                         way = LEFT;
@@ -89,7 +90,7 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
     while (!game->dwShutDown) {
         DWORD offset = WaitForMultipleObjects(MAX_PLAYERS, game->pipeData.hEvents, FALSE, INFINITE);
         DWORD i = offset - WAIT_OBJECT_0;
-        if (i >= 0 && i < MAX_PLAYERS&&game->pipeData.playerData[i].active == FALSE) {
+        if (i >= 0 && i < MAX_PLAYERS&&game->pipeData.playerData[i].active==FALSE) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &nBytes, FALSE)) {
                 ResetEvent(game->pipeData.hEvents[i]);
                 WaitForSingleObject(game->pipeData.hMutex,INFINITE);
@@ -191,7 +192,8 @@ DWORD WINAPI CMDThread(LPVOID param) {
 }
 DWORD WINAPI UpdateThread(LPVOID param) {
     GAME* game = (GAME*)param;
-    DWORD n;
+    DWORD n, count = 0;
+    TCHAR underSymbol;
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, UPDATE_EVENT),hSendPipeEvent = OpenEvent(EVENT_ALL_ACCESS,FALSE,_T("SendPipeEvent"));
     if (hEvent == NULL) {
         _tprintf(_T("Erro a abrir o evento\n\n"));
@@ -207,6 +209,12 @@ DWORD WINAPI UpdateThread(LPVOID param) {
             pfunc(&game->sharedData.memPar->sharedBoard, game->dwInitNumOfRoads + 4);
             for (int i = 0; i < game->dwInitNumOfRoads; i++) {
                 game->roads[i].dwSpeed = game->dwInitSpeed * 100;
+            }
+            for (int i = 0; i < MAX_PLAYERS; i++) {
+                if (game->pipeData.playerData[i].active) {
+                    game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+                    game->pipeData.playerData[i].obj.dwLastY = game->pipeData.playerData[i].obj.dwY;
+                }
             }
             continue;
         }
@@ -227,7 +235,7 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         }
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (game->pipeData.playerData[i].active) {
-                game->sharedData.memPar->sharedBoard.board[game->pipeData.playerData[i].obj.dwLastY][game->pipeData.playerData[i].obj.dwLastX] = _T(' ');
+                game->sharedData.memPar->sharedBoard.board[game->pipeData.playerData[i].obj.dwLastY][game->pipeData.playerData[i].obj.dwLastX] = game->pipeData.playerData[i].underSymbol;
                 game->sharedData.memPar->sharedBoard.board[game->pipeData.playerData[i].obj.dwY][game->pipeData.playerData[i].obj.dwX] = game->pipeData.playerData[i].obj.c;
             }
         }
@@ -269,6 +277,7 @@ DWORD WINAPI RoadMove(LPVOID param) {
             }
 
             for (int j = 0; j < runningCars; j++) {
+                road->cars[j].c = (road->way == RIGHT ? CAR_LEFT : CAR_RIGHT);
                 if (road->cars[j].dwY != road->cars[i].dwY)continue;
                 if (((road->cars[j].dwX == road->cars[i].dwX + 1) ||
                     (road->cars[j].dwX == 1 && road->cars[i].dwX == MAX_WIDTH - 1))
@@ -306,12 +315,12 @@ void moveObject(OBJECT* objData, WAY way) {
 
     switch (way) {
         case UP: {
-            if (objData->dwY - 1 <= 0)break;
+            if (objData->dwY <= 0)break;
             objData->dwY--;
             break;
         }
         case DOWN: {
-            if (objData->dwY + 1 >= MAX_ROADS)break;
+            if (objData->dwY >= MAX_ROADS+4)break;
             objData->dwY++;
             break;
         }
@@ -385,7 +394,7 @@ void initRoads(ROAD* roads, DWORD dwInitSpeed) {
         roads[i].dwTimeStoped = 0;
         roads[i].hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoadMove, (LPVOID)&roads[i], CREATE_SUSPENDED, NULL);
         for (int j = 0; j < roads[i].dwNumOfCars; j++) {
-            roads[i].cars[j].c = CAR;
+            roads[i].cars[j].c = (roads[i].way == RIGHT ? CAR_LEFT : CAR_RIGHT);
             roads[i].cars[j].dwX = (roads[i].way == RIGHT ? 0 : MAX_WIDTH);
             roads[i].cars[j].dwY = i + 2;
             roads[i].cars[j].dwLastX = roads[i].cars[j].dwX;
@@ -423,7 +432,7 @@ void initPipeData(PIPE_DATA* pipeData) {
         pipeData->playerData[i].overlapRead.hEvent = hEventTemp;
         pipeData->playerData[i].overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         pipeData->hEvents[i] = hEventTemp;
-
+        pipeData->playerData[i].underSymbol = _T(' ');
         ConnectNamedPipe(pipeData->playerData[i].hPipe, &pipeData->playerData[i].overlapRead);
         ReadFile(pipeData->playerData[i].hPipe, NULL, 0, NULL, &pipeData->playerData[i].overlapRead);
 

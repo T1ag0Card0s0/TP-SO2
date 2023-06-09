@@ -28,7 +28,8 @@
 #define KEY_DIR TEXT("Software\\TPSO2\\")
 #define PIPE_NAME _T("\\\\.\\pipe\\TP-SO2")
 
-#define CAR _T('C')
+#define CAR_RIGHT _T('<')
+#define CAR_LEFT _T('>')
 #define FROG _T('F')
 
 //estrutura para o buffer circular
@@ -94,6 +95,7 @@ typedef struct PLAYER_DATA {
     OVERLAPPED overlapRead,overlapWrite;
     BOOL active;
     OBJECT obj;
+    TCHAR underSymbol;
 }PLAYER_DATA;
 typedef struct PIPE_DATA {
     PLAYER_DATA playerData[MAX_PLAYERS];

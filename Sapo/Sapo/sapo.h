@@ -14,6 +14,7 @@
 #define MAX_CARS_PER_ROAD 8
 #define MAX_PLAYERS 2
 #define PIPE_NAME _T("\\\\.\\pipe\\TP-SO2")
+#define NUM_BMP_FILES 8
 
 typedef struct SHARED_BOARD {
     DWORD dwWidth;
@@ -21,9 +22,9 @@ typedef struct SHARED_BOARD {
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
 typedef struct PAINT_DATA {
-    HBITMAP hBmp[3];
-    HDC bmpDC[3];
-    BITMAP bmp[3];
+    HBITMAP hBmp[NUM_BMP_FILES];
+    HDC bmpDC[NUM_BMP_FILES];
+    BITMAP bmp[NUM_BMP_FILES];
     HWND hWnd;
     HANDLE hMutex;
     HDC memDC;
@@ -37,6 +38,7 @@ typedef struct PIPE_DATA {
     PAINT_DATA paintData;
     DWORD dwShutDown;
     BOOL bNewBoard;
+    TCHAR sentido;
 }PIPE_DATA;
 #define MUTEX_SERVER _T("Server")
 

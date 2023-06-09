@@ -4,6 +4,4 @@ C:\SO2\TP-SO2\DynamicLinkLibrary\DynamicLinkLibrary\dllmain.c(150,18): warning C
 C:\SO2\TP-SO2\DynamicLinkLibrary\DynamicLinkLibrary\dllmain.c(156,18): warning C4098: 'initGameData': função 'void' retornando um valor
 C:\SO2\TP-SO2\DynamicLinkLibrary\DynamicLinkLibrary\dllmain.c(174,23): warning C4018: '<': incompatibilidade de signed/unsigned
 C:\SO2\TP-SO2\DynamicLinkLibrary\DynamicLinkLibrary\dllmain.c(175,27): warning C4018: '<': incompatibilidade de signed/unsigned
-  LINK : C:\SO2\TP-SO2\DynamicLinkLibrary\x64\Debug\DynamicLinkLibrary.dll não encontrado ou não compilado pelo o último link incremental; executando link completo
-     Criando biblioteca C:\SO2\TP-SO2\DynamicLinkLibrary\x64\Debug\DynamicLinkLibrary.lib e objeto C:\SO2\TP-SO2\DynamicLinkLibrary\x64\Debug\DynamicLinkLibrary.exp
   DynamicLinkLibrary.vcxproj -> C:\SO2\TP-SO2\DynamicLinkLibrary\x64\Debug\DynamicLinkLibrary.dll
