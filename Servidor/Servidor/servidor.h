@@ -80,7 +80,7 @@ typedef struct ROAD {
     DWORD dwSpaceBetween;
     DWORD dwSpeed;
     DWORD dwTimeStoped;
-
+    BOOL bChanged;
     HANDLE hMutex;
     HANDLE hThread;
 
@@ -118,6 +118,7 @@ typedef struct GAME {
 void initRoads(ROAD* roads, DWORD dwNumOfRoads);
 void initRegestry(GAME* data);
 void moveObject(OBJECT* objData, WAY way);
+void changeLevel(GAME* game, BOOL bNextLevel);
 typedef int (*PFUNC_CONS)(SHARED_DATA*,ROAD *,DWORD);
 typedef void (*PFUNC_INIT_SHARED_BOARD)(SHARED_BOARD*,DWORD);
 

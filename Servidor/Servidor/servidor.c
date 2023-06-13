@@ -49,6 +49,10 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         way = STOP;
                     }
                     moveObject(&game->pipeData.playerData[i].obj, way);
+                    if (game->pipeData.playerData[i].obj.dwY == 0) {
+                        game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+                        changeLevel(game,TRUE);
+                    }
                 }
                 ZeroMemory(&n, sizeof(n));
                 ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
@@ -141,7 +145,7 @@ DWORD WINAPI CMDThread(LPVOID param) {
         _fgetts(command_line, TAM, stdin);
         _stscanf_s(command_line, _T("%s %u"), cmd, TAM, &value);
 
-        if (!_tcscmp(cmd, _T("exit"))) { game->dwShutDown = 1; game->sharedData.terminar = 1; break; }
+        if (!_tcscmp(cmd, _T("exit"))) { game->dwShutDown = 1; game->sharedData.terminar = 1; ExitProcess(0); break; }
 
         if (!(_tcscmp(cmd, _T("setf")))) {
             if (value < 1 || value > MAX_ROADS) {
@@ -240,7 +244,8 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         }
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (game->pipeData.playerData[i].active) {
-                game->sharedData.memPar->sharedBoard.board[game->pipeData.playerData[i].obj.dwY][game->pipeData.playerData[i].obj.dwX] = game->pipeData.playerData[i].obj.c;
+                PLAYER_DATA playerData = game->pipeData.playerData[i];
+                game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] = playerData.obj.c;
             }
         }
         SetEvent(hSendPipeEvent);
@@ -262,6 +267,10 @@ DWORD WINAPI RoadMove(LPVOID param) {
             Sleep(road->dwTimeStoped * 1000);
             road->dwTimeStoped = 0;
             road->way = road->lastWay;
+        }
+        if (road->bChanged) {
+            runningCars = 0; numSteps = 0;
+            road->bChanged = FALSE;
         }
         WaitForSingleObject(road->hMutex, INFINITE);
         if (numSteps % road->dwSpaceBetween == 0 && runningCars < road->dwNumOfCars) {
@@ -335,6 +344,35 @@ void moveObject(OBJECT* objData, WAY way) {
         }
     }
 }
+void changeLevel(GAME* game,BOOL bNextLevel) {
+    if (bNextLevel) {
+        if (game->dwInitNumOfRoads < MAX_ROADS) {
+            game->dwInitNumOfRoads++;
+        }
+        else {
+            for (int i = 0; i < MAX_ROADS; i++) {
+                game->roads[i].dwNumOfCars++;
+                game->roads[i].dwNumOfObjects = 0;
+                game->roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / game->roads[i].dwNumOfCars) + 2;
+                game->roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
+                game->roads[i].dwTimeStoped = 0;
+                game->roads[i].bChanged = TRUE;
+                for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
+                    game->roads[i].cars[j].c = (game->roads[i].way == RIGHT ? CAR_LEFT : CAR_RIGHT);
+                    game->roads[i].cars[j].dwX = (game->roads[i].way == RIGHT ? 0 : MAX_WIDTH);
+                    game->roads[i].cars[j].dwY = i + 2;
+
+                }
+            }
+        }
+        
+    }
+ 
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads+3;
+    }
+  
+}
 void initRegestry(GAME* data) {
     DWORD estado;
     if (RegOpenKeyExW(HKEY_CURRENT_USER, KEY_DIR, 0, KEY_ALL_ACCESS, &(data->hKey)) != ERROR_SUCCESS) {
@@ -389,9 +427,10 @@ void initRoads(ROAD* roads, DWORD dwInitSpeed) {
         roads[i].dwNumOfCars = 1;
         roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / MAX_CARS_PER_ROAD) + 2;
         roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
-        roads[i].dwSpeed = dwInitSpeed * 100;
+        roads[i].dwSpeed = dwInitSpeed * 200;
         roads[i].dwTimeStoped = 0;
         roads[i].hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoadMove, (LPVOID)&roads[i], CREATE_SUSPENDED, NULL);
+        roads[i].bChanged = FALSE;
         for (int j = 0; j < roads[i].dwNumOfCars; j++) {
             roads[i].cars[j].c = (roads[i].way == RIGHT ? CAR_LEFT : CAR_RIGHT);
             roads[i].cars[j].dwX = (roads[i].way == RIGHT ? 0 : MAX_WIDTH);
