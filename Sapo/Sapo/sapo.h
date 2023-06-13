@@ -22,14 +22,13 @@ typedef struct SHARED_BOARD {
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
 typedef struct PAINT_DATA {
-    HBITMAP hBmp[NUM_BMP_FILES];
     HDC bmpDC[NUM_BMP_FILES];
+    HDC* memDC;
     BITMAP bmp[NUM_BMP_FILES];
     HWND hWnd;
     HANDLE hMutex;
-    HDC memDC;
-    HBITMAP hBitmapDB;
-    DWORD XOffset, YOffset;
+    
+    DWORD *XOffset, *YOffset;
 }PAINT_DATA;
 typedef struct PIPE_DATA {
     HANDLE hPipe;

@@ -3,140 +3,170 @@
 LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lParam) {
 	static PIPE_DATA pipeData;
 	static HANDLE hThread;
+	static HDC bmpDC[NUM_BMP_FILES];
+	static BITMAP bmp[NUM_BMP_FILES];
+	static HANDLE hMutex;
+	static HDC memDC = NULL;
+	static DWORD XOffset, YOffset;
+	MINMAXINFO* mmi;
+	HBITMAP hBmp[NUM_BMP_FILES];
 	PAINTSTRUCT ps;
-	HANDLE hdc;
+	HDC hdc;
 	RECT rect;
 	switch (messg) {
-	case WM_CREATE:
-		pipeData.paintData.hBmp[0] = (HBITMAP)LoadImage(NULL, TEXT("car-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[1] = (HBITMAP)LoadImage(NULL, TEXT("car-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[2] = (HBITMAP)LoadImage(NULL, TEXT("frog-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[3] = (HBITMAP)LoadImage(NULL, TEXT("frog-down.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[4] = (HBITMAP)LoadImage(NULL, TEXT("frog-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[5] = (HBITMAP)LoadImage(NULL, TEXT("frog-up.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[6] = (HBITMAP)LoadImage(NULL, TEXT("passeio.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		pipeData.paintData.hBmp[7] = (HBITMAP)LoadImage(NULL, TEXT("wood.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+	case WM_CREATE: {
+		hBmp[0] = (HBITMAP)LoadImage(NULL, _T("car-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[1] = (HBITMAP)LoadImage(NULL, _T("car-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[2] = (HBITMAP)LoadImage(NULL, TEXT("frog-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[3] = (HBITMAP)LoadImage(NULL, TEXT("frog-down.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[4] = (HBITMAP)LoadImage(NULL, TEXT("frog-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[5] = (HBITMAP)LoadImage(NULL, TEXT("frog-up.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[6] = (HBITMAP)LoadImage(NULL, TEXT("passeio.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[7] = (HBITMAP)LoadImage(NULL, TEXT("wood.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		for (int i = 0; i < NUM_BMP_FILES; i++) {
-			GetObject(pipeData.paintData.hBmp[i], sizeof(pipeData.paintData.bmp[i]), &pipeData.paintData.bmp[i]);
+			GetObject(hBmp[i], sizeof(bmp[i]), &bmp[i]);
 		}
 		hdc = GetDC(hWnd);
 		for (int i = 0; i < NUM_BMP_FILES; i++) {
-			pipeData.paintData.bmpDC[i] = CreateCompatibleDC(hdc);
-			SelectObject(pipeData.paintData.bmpDC[i], pipeData.paintData.hBmp[i]);
+			bmpDC[i] = CreateCompatibleDC(hdc);
+			SelectObject(bmpDC[i], hBmp[i]);
 		}
-		GetClientRect(hWnd, &rect);
-		pipeData.paintData.XOffset = (rect.right / 2) - ((MAX_WIDTH*30) / 2);
-		pipeData.paintData.YOffset = (rect.bottom / 2) - (((MAX_ROADS+4)*30) / 2);
-		pipeData.paintData.hMutex = CreateMutex(NULL, FALSE, NULL);
 		ReleaseDC(hWnd, hdc);
-		pipeData.paintData.memDC = NULL;
+
+		GetClientRect(hWnd, &rect);
+		XOffset = (rect.right / 2) - ((MAX_WIDTH * 30) / 2);
+		YOffset = (rect.bottom / 2) - (((MAX_ROADS + 4) * 30) / 2);
+		pipeData.paintData.hMutex = CreateMutex(NULL, FALSE, NULL);
+
+		hMutex = CreateMutex(NULL, FALSE, NULL);
+		pipeData.paintData.hMutex = hMutex;
+		pipeData.paintData.hWnd = hWnd;
+		for (int i = 0; i < NUM_BMP_FILES; i++) {
+			pipeData.paintData.bmp[i] = bmp[i];
+			pipeData.paintData.bmpDC[i] = bmpDC[i];
+		}
+		pipeData.paintData.memDC = &memDC;
 		pipeData.sentido = _T('P');
+		pipeData.paintData.XOffset = &XOffset;
+		pipeData.paintData.YOffset = &YOffset;
 		if (initPipeData(&pipeData)) DestroyWindow(hWnd);
 		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadPipeThread, (LPVOID)&pipeData, 0, NULL);
 		break;
-	case WM_PAINT :
+	}
+	case WM_PAINT: {
+		WaitForSingleObject(hMutex, INFINITE);
 		hdc = BeginPaint(hWnd, &ps);
 		GetClientRect(hWnd, &rect);
-		if (pipeData.paintData.memDC == NULL) {
-			pipeData.paintData.memDC = CreateCompatibleDC(hdc);
+		if (memDC == NULL) {
 
-			pipeData.paintData.hBitmapDB = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
-			SelectObject(pipeData.paintData.memDC, pipeData.paintData.hBitmapDB);
-			DeleteObject(pipeData.paintData.hBitmapDB);
-		}
-		FillRect(pipeData.paintData.memDC, &rect, CreateSolidBrush(RGB(0,0,0)));
+			memDC = CreateCompatibleDC(hdc);
+			for (int i = 0; i < NUM_BMP_FILES; i++) {
+				hBmp[i] = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
+				SelectObject(memDC, hBmp[i]);
+				DeleteObject(hBmp[i]);
+			}
+			FillRect(memDC, &rect, CreateSolidBrush(RGB(0, 0, 0)));
+			for (int i = 0; i < pipeData.sharedBoard.dwHeight; i++) {
+				for (int j = 0; j < pipeData.sharedBoard.dwWidth; j++) {
+					if (pipeData.sharedBoard.board[i][j] == _T('<')) {
+						BitBlt(memDC,
+							XOffset + j * bmp[0].bmWidth,
+							YOffset + i * bmp[0].bmHeight,
+							bmp[0].bmWidth,
+							bmp[0].bmHeight,
+							bmpDC[0],
+							0, 0, SRCCOPY);
 
-		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
-		for (int i = 0; i < pipeData.sharedBoard.dwHeight; i++) {
-			for (int j = 0; j < pipeData.sharedBoard.dwWidth; j++) {
-				if (pipeData.sharedBoard.board[i][j] == _T('<')) {
-					BitBlt(pipeData.paintData.memDC,
-						pipeData.paintData.XOffset + j * pipeData.paintData.bmp[0].bmWidth,
-						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[0].bmHeight,
-						pipeData.paintData.bmp[0].bmWidth,
-						pipeData.paintData.bmp[0].bmHeight,
-						pipeData.paintData.bmpDC[0],
-						0, 0, SRCCOPY);
-				}
-				else if (pipeData.sharedBoard.board[i][j] == _T('>')) {
-					BitBlt(pipeData.paintData.memDC,
-						pipeData.paintData.XOffset + j * pipeData.paintData.bmp[1].bmWidth,
-						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[1].bmHeight,
-						pipeData.paintData.bmp[1].bmWidth,
-						pipeData.paintData.bmp[1].bmHeight,
-						pipeData.paintData.bmpDC[1],
-						0, 0, SRCCOPY);
-				}
-				else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
-					if (pipeData.sentido == _T('R')) {
-						BitBlt(pipeData.paintData.memDC,
-							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[2].bmWidth,
-							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[2].bmHeight,
-							pipeData.paintData.bmp[2].bmWidth,
-							pipeData.paintData.bmp[2].bmHeight,
-							pipeData.paintData.bmpDC[2],
+					}
+					else if (pipeData.sharedBoard.board[i][j] == _T('>')) {
+						BitBlt(memDC,
+							XOffset + j * bmp[1].bmWidth,
+							YOffset + i * bmp[1].bmHeight,
+							bmp[1].bmWidth,
+							bmp[1].bmHeight,
+							bmpDC[1],
 							0, 0, SRCCOPY);
-					}else if (pipeData.sentido == _T('D')) {
-						BitBlt(pipeData.paintData.memDC,
-							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[3].bmWidth,
-							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[3].bmHeight,
-							pipeData.paintData.bmp[3].bmWidth,
-							pipeData.paintData.bmp[3].bmHeight,
-							pipeData.paintData.bmpDC[3],
-							0, 0, SRCCOPY);
-					}else  if (pipeData.sentido == _T('L')) {
-						BitBlt(pipeData.paintData.memDC,
-							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[4].bmWidth,
-							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[4].bmHeight,
-							pipeData.paintData.bmp[4].bmWidth,
-							pipeData.paintData.bmp[4].bmHeight,
-							pipeData.paintData.bmpDC[4],
+
+					}
+					else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
+						if (pipeData.sentido == _T('R')) {
+							BitBlt(memDC,
+								XOffset + j * bmp[2].bmWidth,
+								YOffset + i * bmp[2].bmHeight,
+								bmp[2].bmWidth,
+								bmp[2].bmHeight,
+								bmpDC[2],
+								0, 0, SRCCOPY);
+
+						}
+						else if (pipeData.sentido == _T('D')) {
+							BitBlt(memDC,
+								XOffset + j * bmp[3].bmWidth,
+								YOffset + i * bmp[3].bmHeight,
+								bmp[3].bmWidth,
+								bmp[3].bmHeight,
+								bmpDC[3],
+								0, 0, SRCCOPY);
+
+						}
+						else  if (pipeData.sentido == _T('L')) {
+
+							BitBlt(memDC,
+								XOffset + j * bmp[4].bmWidth,
+								YOffset + i * bmp[4].bmHeight,
+								bmp[4].bmWidth,
+								bmp[4].bmHeight,
+								bmpDC[4],
+								0, 0, SRCCOPY);
+
+						}
+						else {
+
+							BitBlt(memDC,
+								XOffset + j * bmp[5].bmWidth,
+								YOffset + i * bmp[5].bmHeight,
+								bmp[5].bmWidth,
+								bmp[5].bmHeight,
+								bmpDC[5],
+								0, 0, SRCCOPY);
+
+						}
+					}
+					else if (pipeData.sharedBoard.board[i][j] == _T('-')) {
+						BitBlt(memDC,
+							XOffset + j * bmp[6].bmWidth,
+							YOffset + i * bmp[6].bmHeight,
+							bmp[6].bmWidth,
+							bmp[6].bmHeight,
+							bmpDC[6],
 							0, 0, SRCCOPY);
 					}
-					else {
-						BitBlt(pipeData.paintData.memDC,
-							pipeData.paintData.XOffset + j * pipeData.paintData.bmp[5].bmWidth,
-							pipeData.paintData.YOffset + i * pipeData.paintData.bmp[5].bmHeight,
-							pipeData.paintData.bmp[5].bmWidth,
-							pipeData.paintData.bmp[5].bmHeight,
-							pipeData.paintData.bmpDC[5],
+					else if (pipeData.sharedBoard.board[i][j] == _T('X')) {
+						BitBlt(memDC,
+							XOffset + j * bmp[7].bmWidth,
+							YOffset + i * bmp[7].bmHeight,
+							bmp[7].bmWidth,
+							bmp[7].bmHeight,
+							bmpDC[7],
 							0, 0, SRCCOPY);
 					}
-				}
-				else if (pipeData.sharedBoard.board[i][j] == _T('-')) {
-					BitBlt(pipeData.paintData.memDC,
-						pipeData.paintData.XOffset + j * pipeData.paintData.bmp[6].bmWidth,
-						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[6].bmHeight,
-						pipeData.paintData.bmp[6].bmWidth,
-						pipeData.paintData.bmp[6].bmHeight,
-						pipeData.paintData.bmpDC[6],
-						0, 0, SRCCOPY);
-				}
-				else if (pipeData.sharedBoard.board[i][j] == _T('X')) {
-					BitBlt(pipeData.paintData.memDC,
-						pipeData.paintData.XOffset+j * pipeData.paintData.bmp[7].bmWidth,
-						pipeData.paintData.YOffset + i * pipeData.paintData.bmp[7].bmHeight,
-						pipeData.paintData.bmp[7].bmWidth,
-						pipeData.paintData.bmp[7].bmHeight,
-						pipeData.paintData.bmpDC[7],
-						0, 0, SRCCOPY);
 				}
 			}
 		}
-		ReleaseMutex(pipeData.paintData.hMutex);
-		BitBlt(hdc, 0, 0, rect.right, rect.bottom, pipeData.paintData.memDC, 0, 0, SRCCOPY);
-		// Encerra a pintura, que substitui o ReleaseDC
+		BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
+		ReleaseMutex(hMutex);
 		EndPaint(hWnd, &ps);
 		break;
-
+	}
 	case WM_ERASEBKGND:
-		return TRUE;
+		return 1;
+
 	case WM_SIZE:
-		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
-		pipeData.paintData.XOffset = (LOWORD(lParam) / 2) - ((MAX_WIDTH * 30) / 2);
-		pipeData.paintData.YOffset = (HIWORD(lParam) / 2) - (((MAX_ROADS + 4) * 30) / 2);
-		pipeData.paintData.memDC = NULL; // metemos novamente a NULL para que caso haja um resize na janela no WM_PAINT a janela em memoria é sempre atualizada com o tamanho novo
-		ReleaseMutex(pipeData.paintData.hMutex);
+		WaitForSingleObject(hMutex, INFINITE);
+		XOffset = (LOWORD(lParam) / 2) - ((MAX_WIDTH * 30) / 2);
+		YOffset = (HIWORD(lParam) / 2) - (((MAX_ROADS + 4) * 30) / 2);
+		memDC = NULL;
+		ReleaseMutex(hMutex);
 
 		break;
 
@@ -179,13 +209,97 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 	PIPE_DATA* pipeData = (PIPE_DATA*)param;
 	SHARED_BOARD sharedBoard;
 	DWORD n;
+	RECT rect;
 	while (!pipeData->dwShutDown) {
 		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {	
 			if (n > 0) {
-				WaitForSingleObject(pipeData->paintData.hMutex, INFINITE);
-				pipeData->sharedBoard = sharedBoard;
-				ReleaseMutex(pipeData->paintData.hMutex);
-				InvalidateRect(pipeData->paintData.hWnd, NULL, FALSE);
+				if (WaitForSingleObject(pipeData->paintData.hMutex, INFINITE) == WAIT_OBJECT_0) {
+					if (*pipeData->paintData.memDC != NULL)
+					{
+						GetClientRect(pipeData->paintData.hWnd, &rect);
+						FillRect(*pipeData->paintData.memDC, &rect, CreateSolidBrush(RGB(0, 0, 0)));
+						for (int i = 0; i < sharedBoard.dwHeight; i++) {
+							for (int j = 0; j < sharedBoard.dwWidth; j++) {
+								if (sharedBoard.board[i][j] == _T('<')) {
+									BitBlt(*pipeData->paintData.memDC,
+										*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[0].bmWidth,
+										*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[0].bmHeight,
+										pipeData->paintData.bmp[0].bmWidth,
+										pipeData->paintData.bmp[0].bmHeight,
+										pipeData->paintData.bmpDC[0],
+										0, 0, SRCCOPY);
+								}
+								else if (sharedBoard.board[i][j] == _T('>')) {
+									BitBlt(*pipeData->paintData.memDC,
+										*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[1].bmWidth,
+										*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[1].bmHeight,
+										pipeData->paintData.bmp[1].bmWidth,
+										pipeData->paintData.bmp[1].bmHeight,
+										pipeData->paintData.bmpDC[1],
+										0, 0, SRCCOPY);
+								}
+								else if (sharedBoard.board[i][j] == _T('F')) {
+									if (pipeData->sentido == _T('R')) {
+										BitBlt(*pipeData->paintData.memDC,
+											*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[2].bmWidth,
+											*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[2].bmHeight,
+											pipeData->paintData.bmp[2].bmWidth,
+											pipeData->paintData.bmp[2].bmHeight,
+											pipeData->paintData.bmpDC[2],
+											0, 0, SRCCOPY);
+									}
+									else if (pipeData->sentido == _T('D')) {
+										BitBlt(*pipeData->paintData.memDC,
+											*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[3].bmWidth,
+											*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[3].bmHeight,
+											pipeData->paintData.bmp[3].bmWidth,
+											pipeData->paintData.bmp[3].bmHeight,
+											pipeData->paintData.bmpDC[3],
+											0, 0, SRCCOPY);
+									}
+									else  if (pipeData->sentido == _T('L')) {
+										BitBlt(*pipeData->paintData.memDC,
+											*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[4].bmWidth,
+											*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[4].bmHeight,
+											pipeData->paintData.bmp[4].bmWidth,
+											pipeData->paintData.bmp[4].bmHeight,
+											pipeData->paintData.bmpDC[4],
+											0, 0, SRCCOPY);
+									}
+									else {
+										BitBlt(*pipeData->paintData.memDC,
+											*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[5].bmWidth,
+											*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[5].bmHeight,
+											pipeData->paintData.bmp[5].bmWidth,
+											pipeData->paintData.bmp[5].bmHeight,
+											pipeData->paintData.bmpDC[5],
+											0, 0, SRCCOPY);
+									}
+								}
+								else if (sharedBoard.board[i][j] == _T('-')) {
+									BitBlt(*pipeData->paintData.memDC,
+										*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[6].bmWidth,
+										*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[6].bmHeight,
+										pipeData->paintData.bmp[6].bmWidth,
+										pipeData->paintData.bmp[6].bmHeight,
+										pipeData->paintData.bmpDC[6],
+										0, 0, SRCCOPY);
+								}
+								else if (sharedBoard.board[i][j] == _T('X')) {
+									BitBlt(*pipeData->paintData.memDC,
+										*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[7].bmWidth,
+										*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[7].bmHeight,
+										pipeData->paintData.bmp[7].bmWidth,
+										pipeData->paintData.bmp[7].bmHeight,
+										pipeData->paintData.bmpDC[7],
+										0, 0, SRCCOPY);
+								}
+							}
+						}
+					}
+					ReleaseMutex(pipeData->paintData.hMutex);
+					InvalidateRect(pipeData->paintData.hWnd, NULL, TRUE);
+				}
 			}
 			ZeroMemory(&sharedBoard, sizeof(sharedBoard));
 			ReadFile(pipeData->hPipe, &sharedBoard, sizeof(sharedBoard), &n, &pipeData->overlapRead);
@@ -245,12 +359,14 @@ int initPipeData(PIPE_DATA* pipeData) {
 }
 int writee(PIPE_DATA* pipeData, TCHAR c) {
 	DWORD n;
+	WaitForSingleObject(pipeData->paintData.hMutex, INFINITE);
 	if (!WriteFile(pipeData->hPipe, &c, sizeof(c), &n, &pipeData->overlapWrite)) {
 		return 1;
 	}
 	if (c != _T('P')) {
 		pipeData->sentido = c;
 	}
+	ReleaseMutex(pipeData->paintData.hMutex);
 	return 0;
 }
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {

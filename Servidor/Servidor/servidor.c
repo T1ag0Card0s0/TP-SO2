@@ -386,7 +386,7 @@ void initRegestry(GAME* data) {
 void initRoads(ROAD* roads, DWORD dwInitSpeed) {
     for (int i = 0; i < MAX_ROADS; i++) {
         roads[i].dwNumOfObjects = 0;
-        roads[i].dwNumOfCars = rand() % MAX_CARS_PER_ROAD + 1;
+        roads[i].dwNumOfCars = 1;
         roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / MAX_CARS_PER_ROAD) + 2;
         roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
         roads[i].dwSpeed = dwInitSpeed * 100;
