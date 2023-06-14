@@ -14,8 +14,11 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	HDC hdc;
 	RECT rect;
 	DWORD dwXMouse, dwYMouse;
+	TCHAR n[3];
+	HFONT hFont;
 	switch (messg) {
 	case WM_CREATE: {
+
 		hBmp[0] = (HBITMAP)LoadImage(NULL, _T("car-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		hBmp[1] = (HBITMAP)LoadImage(NULL, _T("car-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		hBmp[2] = (HBITMAP)LoadImage(NULL, TEXT("frog-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
@@ -63,22 +66,29 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		WaitForSingleObject(hMutex, INFINITE);
 		hdc = BeginPaint(hWnd, &ps);
 		GetClientRect(hWnd, &rect);
+		hFont = CreateFont(16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+			DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+			DEFAULT_QUALITY, DEFAULT_PITCH, L"Arial");
+		SelectObject(hdc, hFont);
 		if (memDC == NULL) {
 
 			memDC = CreateCompatibleDC(hdc);
 			for (int i = 0; i < NUM_BMP_FILES; i++) {
 				hBmp[i] = CreateCompatibleBitmap(hdc, rect.right, rect.bottom);
 				SelectObject(memDC, hBmp[i]);
-				DeleteObject(hBmp[i]);
 			}
 			FillRect(memDC, &rect, CreateSolidBrush(RGB(0, 0, 0)));
 		}
 		else {
 			BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
-			EndPaint(hWnd, &ps);
 		}
-		ReleaseMutex(hMutex);
 	
+		for (int i = 0; i < NUM_BMP_FILES; i++) {
+			DeleteObject(hBmp[i]);
+		}
+		DeleteObject(hFont);
+		ReleaseMutex(hMutex);
+		EndPaint(hWnd, &ps);
 		break;
 	}
 	case WM_ERASEBKGND:
@@ -111,6 +121,25 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			writee(&pipeData, _T('B'));//B = volta para posicao inicial
 		}
 		ReleaseMutex(pipeData.paintData.hMutex);
+		break;
+	case WM_MOUSEHOVER:
+		dwXMouse = GET_X_LPARAM(lParam);
+		dwYMouse = GET_Y_LPARAM(lParam);
+		if (dwXMouse <pipeData.pipeGameData.dwX * 30 + XOffset + 30 && dwXMouse>pipeData.pipeGameData.dwX * 30 + XOffset &&
+			dwYMouse< pipeData.pipeGameData.dwY * 30 + YOffset + 30 && dwYMouse>pipeData.pipeGameData.dwY * 30 + YOffset
+			) {
+			WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
+			hdc = GetDC(hWnd);
+			GetClientRect(hWnd, &rect);
+			SetTextColor(hdc, RGB(255, 255, 255));
+			SetBkMode(hdc, TRANSPARENT);
+
+			rect.left = pipeData.pipeGameData.dwX*30+XOffset;
+			rect.top = pipeData.pipeGameData.dwY*30+YOffset-15;
+			_stprintf_s(n, _countof(n), _T("%u"), pipeData.pipeGameData.dwNEndLevel);
+			DrawText(hdc, n,_tcslen(n), &rect, DT_SINGLELINE | DT_NOCLIP);
+			ReleaseMutex(pipeData.paintData.hMutex);
+		}
 		break;
 	case WM_SIZE:
 		WaitForSingleObject(hMutex, INFINITE);
@@ -162,6 +191,7 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 	PIPE_DATA* pipeData = (PIPE_DATA*)param;
 	PIPE_GAME_DATA pipeGameData;
 	DWORD n;
+	TCHAR tchar[3], labelPoints[50], labelLevel[50];
 	RECT rect;
 	while (!pipeData->dwShutDown) {
 		if (GetOverlappedResult(pipeData->hPipe, &pipeData->overlapRead, &n, TRUE)) {	
@@ -260,6 +290,32 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 								}
 							}
 						}
+						_stprintf_s(labelPoints, _countof(labelPoints), _T("Pontuação Jogador 1: %u Jogador 2: %u"), pipeGameData.dwPlayer1Points, pipeGameData.dwPlayer2Points);
+						_stprintf_s(labelLevel, _countof(labelLevel), _T("Nível: %u"), pipeGameData.dwLevel);
+						SetTextColor(*pipeData->paintData.memDC, RGB(255, 255, 255));
+						SetBkMode(*pipeData->paintData.memDC, TRANSPARENT);
+						rect.left = *pipeData->paintData.XOffset;
+						rect.top = 30;
+						DrawText(* pipeData->paintData.memDC, labelPoints, _tcslen(labelPoints), &rect, DT_SINGLELINE | DT_NOCLIP);
+						rect.left = *pipeData->paintData.XOffset;
+						rect.top = 60;
+						DrawText(*pipeData->paintData.memDC, labelLevel, _tcslen(labelLevel), &rect, DT_SINGLELINE | DT_NOCLIP);
+						POINT cursorPos;
+						GetCursorPos(&cursorPos);
+						ScreenToClient(pipeData->paintData.hWnd, &cursorPos);
+						if (cursorPos.x >=pipeGameData.dwX*30+(*pipeData->paintData.XOffset)
+							&& cursorPos.x <= pipeGameData.dwX * 30 + (*pipeData->paintData.XOffset)+30 &&
+							cursorPos.y >= pipeGameData.dwY * 30 + (*pipeData->paintData.YOffset) &&
+							cursorPos.y <= pipeGameData.dwY * 30 + (*pipeData->paintData.YOffset)+30) {
+							SetTextColor(*pipeData->paintData.memDC, RGB(255, 255, 255));
+							SetBkMode(*pipeData->paintData.memDC, TRANSPARENT);
+
+							rect.left = pipeData->pipeGameData.dwX * 30 + (*pipeData->paintData.XOffset);
+							rect.top = pipeData->pipeGameData.dwY * 30 + (*pipeData->paintData.YOffset) - 15;
+							_stprintf_s(tchar, _countof(tchar), _T("%u"), pipeData->pipeGameData.dwNEndLevel);
+							DrawText(*pipeData->paintData.memDC, tchar, _tcslen(tchar), &rect, DT_SINGLELINE | DT_NOCLIP);
+						}
+
 					}
 					ReleaseMutex(pipeData->paintData.hMutex);
 					InvalidateRect(pipeData->paintData.hWnd, NULL, TRUE);
@@ -286,6 +342,16 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 	// Server saiu entao sai
 	CloseHandle(hEvent);
 	ExitProcess(0);
+}
+BOOL IsCursorOverArea(int left, int top, int right, int bottom) {
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+	if (cursorPos.x >= left && cursorPos.x <= right &&
+		cursorPos.y >= top && cursorPos.y <= bottom) {
+		return TRUE;
+	}
+
+	return FALSE;
 }
 int CheckNumberOfInstances(HANDLE hSemaphore) {
 	/* if (OpenMutex(SYNCHRONIZE, FALSE, _T("Servidor")) == NULL) {
@@ -334,7 +400,6 @@ int writee(PIPE_DATA* pipeData, TCHAR c) {
 	return 0;
 }
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR lpCmdLine, int nCmdShow) {
-
 	HANDLE hSemaphore;
 	HANDLE hServerTh;
 	if (OpenMutex(SYNCHRONIZE, FALSE, MUTEX_SERVER) == NULL) {

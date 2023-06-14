@@ -27,6 +27,7 @@ typedef struct PIPE_GAME_DATA {
     DWORD dwPlayer1Points, dwPlayer2Points;
     DWORD dwPlayer1Lives, dwPlayer2Lives;
     DWORD dwX, dwY;
+    DWORD dwNEndLevel;//numero de vezes que chegou ao fim
 }PIPE_GAME_DATA;
 typedef struct PAINT_DATA {
     HDC bmpDC[NUM_BMP_FILES];

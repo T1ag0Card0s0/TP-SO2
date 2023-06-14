@@ -30,6 +30,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                 if (n > 0) {
                     WAY way;
                     if (c == _T('U')) {
+                        game->pipeData.playerData[i].dwPoints++;
                         way = UP;
                     }
                     else if (c == _T('R')) {
@@ -37,6 +38,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if (c == _T('D')) {
                         way = DOWN;
+                        game->pipeData.playerData[i].dwPoints--;;
                     }
                     else if (c == _T('L')) {
                         way = LEFT;
@@ -67,6 +69,8 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                 
                     moveObject(&game->pipeData.playerData[i].obj, way);
                     if (game->pipeData.playerData[i].obj.dwY == 0) {
+                        game->pipeData.playerData[i].dwPoints += 10;
+                        game->pipeData.playerData[i].dwNEndLevel++;
                         game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
                         changeLevel(game,TRUE);
                     }
@@ -96,6 +100,7 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                 pipeGameData.dwPlayer1Lives = game->pipeData.playerData[0].dwLives; pipeGameData.dwPlayer2Lives = game->pipeData.playerData[1].dwLives;
                 pipeGameData.dwPlayer1Points = game->pipeData.playerData[0].dwPoints; pipeGameData.dwPlayer2Points = game->pipeData.playerData[1].dwPoints;
                 pipeGameData.dwX = game->pipeData.playerData[i].obj.dwX; pipeGameData.dwY = game->pipeData.playerData[i].obj.dwY;
+                pipeGameData.dwNEndLevel = game->pipeData.playerData[i].dwNEndLevel;
                 pipeGameData.sharedBoard = game->sharedData.memPar->sharedBoard;
                 WriteFile(game->pipeData.playerData[i].hPipe,
                     &pipeGameData,
@@ -122,7 +127,7 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
                 if (nBytes == 0) {
                     WaitForSingleObject(game->pipeData.hMutex, INFINITE);
                     // inicializar playerData
-                    game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH;
+                    game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH+2;
                     game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
                     game->pipeData.playerData[i].obj.c = FROG;
                     game->pipeData.playerData[i].active = TRUE;
@@ -375,6 +380,7 @@ void moveObject(OBJECT* objData, WAY way) {
 }
 void changeLevel(GAME* game,BOOL bNextLevel) {
     if (bNextLevel) {
+        game->dwLevel++;
         if (game->dwInitNumOfRoads < MAX_ROADS) {
             game->dwInitNumOfRoads++;
             for (int i = 0; i < MAX_ROADS; i++) {
@@ -520,7 +526,9 @@ void initPipeData(PIPE_DATA* pipeData) {
         pipeData->playerData[i].overlapRead.hEvent = hEventTemp;
         pipeData->playerData[i].overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         pipeData->hEvents[i] = hEventTemp;
-    
+        pipeData->playerData[i].dwLives = 3;
+        pipeData->playerData[i].dwNEndLevel = 0;
+        pipeData->playerData[i].dwPoints = 0;    
         ConnectNamedPipe(pipeData->playerData[i].hPipe, &pipeData->playerData[i].overlapRead);
         ReadFile(pipeData->playerData[i].hPipe, NULL, 0, NULL, &pipeData->playerData[i].overlapRead);
 

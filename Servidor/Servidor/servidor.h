@@ -97,6 +97,7 @@ typedef struct PIPE_GAME_DATA {
     DWORD dwPlayer1Points, dwPlayer2Points;
     DWORD dwPlayer1Lives, dwPlayer2Lives;
     DWORD dwX, dwY;
+    DWORD dwNEndLevel;//numero de vezes que chegou ao fim
 }PIPE_GAME_DATA;
 typedef struct PLAYER_DATA {
     HANDLE hPipe;
@@ -104,6 +105,7 @@ typedef struct PLAYER_DATA {
     BOOL active;
     OBJECT obj;
     DWORD dwPoints, dwLives;
+    DWORD dwNEndLevel;//numero de vezes que chegou ao fim
 }PLAYER_DATA;
 typedef struct PIPE_DATA {
     PLAYER_DATA playerData[MAX_PLAYERS];
