@@ -1,9 +1,7 @@
 ﻿  sapo.c
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(69,22): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(70,23): warning C4018: '<': incompatibilidade de signed/unsigned
 C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(11,14): warning C4101: 'mmi': variável local não referenciada
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(221,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(222,26): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(313,58): warning C4133: 'função': tipos incompatíveis - de 'char [11]' para 'LPCWSTR'
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(393,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(176,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(177,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(277,58): warning C4133: 'função': tipos incompatíveis - de 'char [11]' para 'LPCWSTR'
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(357,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
   Sapo.vcxproj -> C:\SO2\TP-SO2\Sapo\x64\Debug\Sapo.exe

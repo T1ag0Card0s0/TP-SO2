@@ -13,6 +13,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	PAINTSTRUCT ps;
 	HDC hdc;
 	RECT rect;
+	DWORD dwXMouse, dwYMouse;
 	switch (messg) {
 	case WM_CREATE: {
 		hBmp[0] = (HBITMAP)LoadImage(NULL, _T("car-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
@@ -49,6 +50,11 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		pipeData.sentido = _T('P');
 		pipeData.paintData.XOffset = &XOffset;
 		pipeData.paintData.YOffset = &YOffset;
+		pipeData.pipeGameData.dwLevel = 0;
+		pipeData.pipeGameData.dwPlayer1Lives = 3; pipeData.pipeGameData.dwPlayer2Lives = 3;
+		pipeData.pipeGameData.dwPlayer1Points = 0; pipeData.pipeGameData.dwPlayer2Points = 0;
+		pipeData.pipeGameData.dwX = 0;
+		pipeData.pipeGameData.dwY = 0;
 		if (initPipeData(&pipeData)) DestroyWindow(hWnd);
 		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadPipeThread, (LPVOID)&pipeData, 0, NULL);
 		break;
@@ -66,101 +72,46 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 				DeleteObject(hBmp[i]);
 			}
 			FillRect(memDC, &rect, CreateSolidBrush(RGB(0, 0, 0)));
-			for (int i = 0; i < pipeData.sharedBoard.dwHeight; i++) {
-				for (int j = 0; j < pipeData.sharedBoard.dwWidth; j++) {
-					if (pipeData.sharedBoard.board[i][j] == _T('<')) {
-						BitBlt(memDC,
-							XOffset + j * bmp[0].bmWidth,
-							YOffset + i * bmp[0].bmHeight,
-							bmp[0].bmWidth,
-							bmp[0].bmHeight,
-							bmpDC[0],
-							0, 0, SRCCOPY);
-
-					}
-					else if (pipeData.sharedBoard.board[i][j] == _T('>')) {
-						BitBlt(memDC,
-							XOffset + j * bmp[1].bmWidth,
-							YOffset + i * bmp[1].bmHeight,
-							bmp[1].bmWidth,
-							bmp[1].bmHeight,
-							bmpDC[1],
-							0, 0, SRCCOPY);
-
-					}
-					else if (pipeData.sharedBoard.board[i][j] == _T('F')) {
-						if (pipeData.sentido == _T('R')) {
-							BitBlt(memDC,
-								XOffset + j * bmp[2].bmWidth,
-								YOffset + i * bmp[2].bmHeight,
-								bmp[2].bmWidth,
-								bmp[2].bmHeight,
-								bmpDC[2],
-								0, 0, SRCCOPY);
-
-						}
-						else if (pipeData.sentido == _T('D')) {
-							BitBlt(memDC,
-								XOffset + j * bmp[3].bmWidth,
-								YOffset + i * bmp[3].bmHeight,
-								bmp[3].bmWidth,
-								bmp[3].bmHeight,
-								bmpDC[3],
-								0, 0, SRCCOPY);
-
-						}
-						else  if (pipeData.sentido == _T('L')) {
-
-							BitBlt(memDC,
-								XOffset + j * bmp[4].bmWidth,
-								YOffset + i * bmp[4].bmHeight,
-								bmp[4].bmWidth,
-								bmp[4].bmHeight,
-								bmpDC[4],
-								0, 0, SRCCOPY);
-
-						}
-						else {
-
-							BitBlt(memDC,
-								XOffset + j * bmp[5].bmWidth,
-								YOffset + i * bmp[5].bmHeight,
-								bmp[5].bmWidth,
-								bmp[5].bmHeight,
-								bmpDC[5],
-								0, 0, SRCCOPY);
-
-						}
-					}
-					else if (pipeData.sharedBoard.board[i][j] == _T('-')) {
-						BitBlt(memDC,
-							XOffset + j * bmp[6].bmWidth,
-							YOffset + i * bmp[6].bmHeight,
-							bmp[6].bmWidth,
-							bmp[6].bmHeight,
-							bmpDC[6],
-							0, 0, SRCCOPY);
-					}
-					else if (pipeData.sharedBoard.board[i][j] == _T('X')) {
-						BitBlt(memDC,
-							XOffset + j * bmp[7].bmWidth,
-							YOffset + i * bmp[7].bmHeight,
-							bmp[7].bmWidth,
-							bmp[7].bmHeight,
-							bmpDC[7],
-							0, 0, SRCCOPY);
-					}
-				}
-			}
 		}
-		BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
+		else {
+			BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
+			EndPaint(hWnd, &ps);
+		}
 		ReleaseMutex(hMutex);
-		EndPaint(hWnd, &ps);
+	
 		break;
 	}
 	case WM_ERASEBKGND:
 		return 1;
-
+	case WM_LBUTTONDOWN:
+		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
+		dwXMouse = GET_X_LPARAM(lParam);
+		dwYMouse = GET_Y_LPARAM(lParam);
+		if (dwXMouse<pipeData.pipeGameData.dwX * 30 + XOffset && dwXMouse >(pipeData.pipeGameData.dwX * 30 + XOffset) - 30) {
+			writee(&pipeData, _T('L'));
+		}
+		else if (dwXMouse<pipeData.pipeGameData.dwX * 30 + XOffset + 60 && dwXMouse >(pipeData.pipeGameData.dwX * 30 + XOffset)+30) {
+			writee(&pipeData, _T('R'));
+		}
+		if (dwYMouse<=pipeData.pipeGameData.dwY * 30 + YOffset && dwYMouse >=(pipeData.pipeGameData.dwY * 30 + YOffset) - 30) {
+			writee(&pipeData, _T('U'));
+		}
+		else if (dwYMouse<=pipeData.pipeGameData.dwY * 30 + YOffset + 60&& dwYMouse >=(pipeData.pipeGameData.dwY * 30 + YOffset)+30) {
+			writee(&pipeData, _T('D'));
+		}
+		ReleaseMutex(pipeData.paintData.hMutex);
+		break;
+	case WM_RBUTTONDOWN:
+		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
+		dwXMouse = GET_X_LPARAM(lParam);
+		dwYMouse = GET_Y_LPARAM(lParam);
+		if (dwXMouse <pipeData.pipeGameData.dwX * 30 + XOffset + 30 && dwXMouse>pipeData.pipeGameData.dwX * 30 + XOffset &&
+			dwYMouse< pipeData.pipeGameData.dwY * 30 + YOffset + 30 && dwYMouse>pipeData.pipeGameData.dwY * 30 + YOffset
+			) {
+			writee(&pipeData, _T('B'));//B = volta para posicao inicial
+		}
+		ReleaseMutex(pipeData.paintData.hMutex);
+		break;
 	case WM_SIZE:
 		WaitForSingleObject(hMutex, INFINITE);
 		XOffset = (LOWORD(lParam) / 2) - ((MAX_WIDTH * 30) / 2);
@@ -190,6 +141,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		}
 		break;
 	case WM_DESTROY:
+		writee(&pipeData, _T('Q'));
+		CloseHandle(pipeData.hPipe);
 		PostQuitMessage(0);
 		break;
 	case WM_CLOSE:
@@ -207,7 +160,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 }
 DWORD WINAPI ReadPipeThread(LPVOID param) {
 	PIPE_DATA* pipeData = (PIPE_DATA*)param;
-	SHARED_BOARD sharedBoard;
+	PIPE_GAME_DATA pipeGameData;
 	DWORD n;
 	RECT rect;
 	while (!pipeData->dwShutDown) {
@@ -216,6 +169,8 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 				if (WaitForSingleObject(pipeData->paintData.hMutex, INFINITE) == WAIT_OBJECT_0) {
 					if (*pipeData->paintData.memDC != NULL)
 					{
+						pipeData->pipeGameData = pipeGameData;
+						SHARED_BOARD sharedBoard = pipeGameData.sharedBoard;
 						GetClientRect(pipeData->paintData.hWnd, &rect);
 						FillRect(*pipeData->paintData.memDC, &rect, CreateSolidBrush(RGB(0, 0, 0)));
 						for (int i = 0; i < sharedBoard.dwHeight; i++) {
@@ -238,7 +193,7 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 										pipeData->paintData.bmpDC[1],
 										0, 0, SRCCOPY);
 								}
-								else if (sharedBoard.board[i][j] == _T('F')) {
+								else if (sharedBoard.board[i][j] == _T('F')&&pipeGameData.dwX==j&&pipeGameData.dwY==i) {
 									if (pipeData->sentido == _T('R')) {
 										BitBlt(*pipeData->paintData.memDC,
 											*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[2].bmWidth,
@@ -276,6 +231,15 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 											0, 0, SRCCOPY);
 									}
 								}
+								else if (sharedBoard.board[i][j] == _T('F')) {
+									BitBlt(*pipeData->paintData.memDC,
+										*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[5].bmWidth,
+										*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[5].bmHeight,
+										pipeData->paintData.bmp[5].bmWidth,
+										pipeData->paintData.bmp[5].bmHeight,
+										pipeData->paintData.bmpDC[5],
+										0, 0, SRCCOPY);
+								}
 								else if (sharedBoard.board[i][j] == _T('-')) {
 									BitBlt(*pipeData->paintData.memDC,
 										*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[6].bmWidth,
@@ -301,8 +265,8 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 					InvalidateRect(pipeData->paintData.hWnd, NULL, TRUE);
 				}
 			}
-			ZeroMemory(&sharedBoard, sizeof(sharedBoard));
-			ReadFile(pipeData->hPipe, &sharedBoard, sizeof(sharedBoard), &n, &pipeData->overlapRead);
+			ZeroMemory(&pipeGameData, sizeof(pipeGameData));
+			ReadFile(pipeData->hPipe, &pipeGameData, sizeof(pipeGameData), &n, &pipeData->overlapRead);
 		}
 	}
 	ExitThread(0);

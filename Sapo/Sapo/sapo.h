@@ -21,6 +21,13 @@ typedef struct SHARED_BOARD {
     DWORD dwHeight;
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
+typedef struct PIPE_GAME_DATA {
+    SHARED_BOARD sharedBoard;
+    DWORD dwLevel;
+    DWORD dwPlayer1Points, dwPlayer2Points;
+    DWORD dwPlayer1Lives, dwPlayer2Lives;
+    DWORD dwX, dwY;
+}PIPE_GAME_DATA;
 typedef struct PAINT_DATA {
     HDC bmpDC[NUM_BMP_FILES];
     HDC* memDC;
@@ -33,7 +40,7 @@ typedef struct PAINT_DATA {
 typedef struct PIPE_DATA {
     HANDLE hPipe;
     OVERLAPPED overlapRead, overlapWrite;
-    SHARED_BOARD sharedBoard;
+    PIPE_GAME_DATA pipeGameData;
     PAINT_DATA paintData;
     DWORD dwShutDown;
     BOOL bNewBoard;

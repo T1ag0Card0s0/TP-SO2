@@ -36,18 +36,35 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         way = RIGHT;
                     }
                     else if (c == _T('D')) {
-                        way = DOWN;   
+                        way = DOWN;
                     }
                     else if (c == _T('L')) {
                         way = LEFT;
                     }
                     else if (c == _T('P')) {
-                        game->bPaused = TRUE;
+                        if (!game->bPaused) {
+                            game->bPaused = TRUE;
+                            for (int j = 0; j < game->dwInitNumOfRoads; j++) {
+                                game->roads[j].lastWay = game->roads[j].way;
+                                game->roads[j].way = STOP;
+                            }
+                        }
+                        else {
+                            game->bPaused = FALSE;
+                            for (int j = 0; j < game->dwInitNumOfRoads; j++) {
+                                game->roads[j].way = game->roads[j].lastWay;
+                            }
+                        }
+                        way = STOP;
+                    }
+                    else if (c == _T('B')) {
+                        game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
                         way = STOP;
                     }
                     else {
                         way = STOP;
                     }
+                
                     moveObject(&game->pipeData.playerData[i].obj, way);
                     if (game->pipeData.playerData[i].obj.dwY == 0) {
                         game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
@@ -64,6 +81,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
 }
 DWORD WINAPI WritePipeThread(LPVOID param) {
     GAME* game = (GAME*)param;
+    PIPE_GAME_DATA pipeGameData;
     DWORD n;
     HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, _T("SendPipeEvent"));
     if (hEvent == NULL) {
@@ -74,9 +92,14 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
         WaitForSingleObject(hEvent, INFINITE);
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (game->pipeData.playerData[i].active) {
+                pipeGameData.dwLevel = game->dwLevel;
+                pipeGameData.dwPlayer1Lives = game->pipeData.playerData[0].dwLives; pipeGameData.dwPlayer2Lives = game->pipeData.playerData[1].dwLives;
+                pipeGameData.dwPlayer1Points = game->pipeData.playerData[0].dwPoints; pipeGameData.dwPlayer2Points = game->pipeData.playerData[1].dwPoints;
+                pipeGameData.dwX = game->pipeData.playerData[i].obj.dwX; pipeGameData.dwY = game->pipeData.playerData[i].obj.dwY;
+                pipeGameData.sharedBoard = game->sharedData.memPar->sharedBoard;
                 WriteFile(game->pipeData.playerData[i].hPipe,
-                    &game->sharedData.memPar->sharedBoard,
-                    sizeof(game->sharedData.memPar->sharedBoard),
+                    &pipeGameData,
+                    sizeof(pipeGameData),
                     &n,
                     &game->pipeData.playerData[i].overlapWrite);
 
@@ -245,7 +268,13 @@ DWORD WINAPI UpdateThread(LPVOID param) {
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (game->pipeData.playerData[i].active) {
                 PLAYER_DATA playerData = game->pipeData.playerData[i];
-                game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] = playerData.obj.c;
+                if (game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] == _T('>') ||
+                    game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] == _T('<')) {
+                    changeLevel(game, FALSE);
+                }
+                else {
+                    game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] = playerData.obj.c;
+                }
             }
         }
         SetEvent(hSendPipeEvent);
@@ -348,14 +377,36 @@ void changeLevel(GAME* game,BOOL bNextLevel) {
     if (bNextLevel) {
         if (game->dwInitNumOfRoads < MAX_ROADS) {
             game->dwInitNumOfRoads++;
-        }
-        else {
             for (int i = 0; i < MAX_ROADS; i++) {
-                game->roads[i].dwNumOfCars++;
                 game->roads[i].dwNumOfObjects = 0;
                 game->roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / game->roads[i].dwNumOfCars) + 2;
                 game->roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
                 game->roads[i].dwTimeStoped = 0;
+                if (rand() % 2 == 0)
+                    game->roads[i].dwSpeed *= 0.5;
+                else 
+                    game->roads[i].dwSpeed *= 2;
+                game->roads[i].bChanged = TRUE;
+                for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
+                    game->roads[i].cars[j].c = (game->roads[i].way == RIGHT ? CAR_LEFT : CAR_RIGHT);
+                    game->roads[i].cars[j].dwX = (game->roads[i].way == RIGHT ? 0 : MAX_WIDTH);
+                    game->roads[i].cars[j].dwY = i + 2;
+
+                }
+            }
+        }
+        else {
+            for (int i = 0; i < MAX_ROADS; i++) {
+                if(game->roads[i].dwNumOfCars<MAX_CARS_PER_ROAD&&rand()%2==0)
+                    game->roads[i].dwNumOfCars++;
+                game->roads[i].dwNumOfObjects = 0;
+                game->roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / game->roads[i].dwNumOfCars) + 2;
+                game->roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
+                game->roads[i].dwTimeStoped = 0;
+                if (rand() % 2 == 0)
+                    game->roads[i].dwSpeed *= 0.7;
+                else
+                    game->roads[i].dwSpeed *= 1.3;
                 game->roads[i].bChanged = TRUE;
                 for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
                     game->roads[i].cars[j].c = (game->roads[i].way == RIGHT ? CAR_LEFT : CAR_RIGHT);
@@ -427,7 +478,7 @@ void initRoads(ROAD* roads, DWORD dwInitSpeed) {
         roads[i].dwNumOfCars = 1;
         roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / MAX_CARS_PER_ROAD) + 2;
         roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
-        roads[i].dwSpeed = dwInitSpeed * 200;
+        roads[i].dwSpeed = dwInitSpeed * 500;
         roads[i].dwTimeStoped = 0;
         roads[i].hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoadMove, (LPVOID)&roads[i], CREATE_SUSPENDED, NULL);
         roads[i].bChanged = FALSE;
@@ -451,7 +502,7 @@ void initPipeData(PIPE_DATA* pipeData) {
             PIPE_WAIT | PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE,
             MAX_PLAYERS,
             sizeof(TCHAR),
-            sizeof(SHARED_BOARD),
+            sizeof(PIPE_GAME_DATA),
             NMPWAIT_USE_DEFAULT_WAIT,
             NULL);
         if (pipeData->playerData[i].hPipe == INVALID_HANDLE_VALUE) {
