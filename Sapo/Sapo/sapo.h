@@ -25,7 +25,6 @@ typedef struct PIPE_GAME_DATA {
     SHARED_BOARD sharedBoard;
     DWORD dwLevel;
     DWORD dwPlayer1Points, dwPlayer2Points;
-    DWORD dwPlayer1Lives, dwPlayer2Lives;
     DWORD dwX, dwY;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
 }PIPE_GAME_DATA;

@@ -13,6 +13,22 @@ void getCurrentCursorPosition(int* x, int* y) {//recebe duas variaveis e guarda 
         *y = csbi.dwCursorPosition.Y;
     }
 }
+DWORD WINAPI AFKCounter(LPVOID param) {
+    GAME* game = (GAME*)param;
+    while (!game->dwShutDown) {
+        for (int i = 0; i < MAX_PLAYERS; i++) {
+            if (game->pipeData.playerData[i].active) {
+                if (game->pipeData.playerData[i].dwAFKseg >= 10) {
+                    game->pipeData.playerData[i].dwAFKseg = 0;
+                    game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+                }
+                game->pipeData.playerData[i].dwAFKseg++;
+            }
+        }
+        Sleep(1000);
+    }
+    ExitThread(0);
+}
 DWORD WINAPI ReceivePipeThread(LPVOID param) {
     GAME* game = (GAME*)param;
     HANDLE hEvents[MAX_PLAYERS];
@@ -28,7 +44,8 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
         if (i >= 0 && i < MAX_PLAYERS) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &n, FALSE)) {
                 if (n > 0) {
-                    WAY way;
+                    game->pipeData.playerData[i].dwAFKseg = 0;
+                    WAY way = STOP;
                     if (c == _T('U')) {
                         game->pipeData.playerData[i].dwPoints++;
                         way = UP;
@@ -38,7 +55,9 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if (c == _T('D')) {
                         way = DOWN;
-                        game->pipeData.playerData[i].dwPoints--;;
+                        if (game->pipeData.playerData[i].dwPoints > 5) {
+                            game->pipeData.playerData[i].dwPoints -= 5;
+                        }
                     }
                     else if (c == _T('L')) {
                         way = LEFT;
@@ -57,14 +76,44 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                                 game->roads[j].way = game->roads[j].lastWay;
                             }
                         }
-                        way = STOP;
                     }
                     else if (c == _T('B')) {
                         game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
-                        way = STOP;
+                        
                     }
-                    else {
-                        way = STOP;
+                    else if(c == _T('Q')) {
+                        game->pipeData.dwNumClients--;
+                        game->pipeData.playerData[i].active = FALSE;
+                        DisconnectNamedPipe(game->pipeData.playerData[i].hPipe);
+                        CloseHandle(game->pipeData.playerData[i].hPipe);
+                        game->pipeData.playerData[i].hPipe = CreateNamedPipe(PIPE_NAME, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
+                            PIPE_WAIT | PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE,
+                            MAX_PLAYERS,
+                            sizeof(TCHAR),
+                            sizeof(PIPE_GAME_DATA),
+                            NMPWAIT_USE_DEFAULT_WAIT,
+                            NULL);
+                        if (game->pipeData.playerData[i].hPipe == INVALID_HANDLE_VALUE) {
+                            _tprintf(_T("[ERRO] Criar pipe para o jogador %d\n"), i);
+                            return;
+                        }
+                        HANDLE hEventTemp = CreateEvent(NULL, TRUE, FALSE, NULL);
+                        if (hEventTemp == NULL) {
+                            _tprintf(_T("[ERRO] Criar evento para o jogador %d\n"), i);
+                            return;
+                        }
+                        ZeroMemory(&game->pipeData.playerData[i].overlapRead, sizeof(game->pipeData.playerData[i].overlapRead));
+                        ZeroMemory(&game->pipeData.playerData[i].overlapWrite, sizeof(game->pipeData.playerData[i].overlapWrite));
+                        game->pipeData.playerData[i].overlapRead.hEvent = hEventTemp;
+                        game->pipeData.playerData[i].overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+                        game->pipeData.hEvents[i] = hEventTemp;
+                        game->pipeData.playerData[i].dwNEndLevel = 0;
+                        game->pipeData.playerData[i].dwPoints = 0;
+                        ConnectNamedPipe(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead);
+                        ReadFile(game->pipeData.playerData[i].hPipe, NULL, 0, NULL, &game->pipeData.playerData[i].overlapRead);
+                        hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
+                        _tprintf(_T("Saiu um jogador\n"));
+                        continue;
                     }
                 
                     moveObject(&game->pipeData.playerData[i].obj, way);
@@ -97,7 +146,6 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (game->pipeData.playerData[i].active) {
                 pipeGameData.dwLevel = game->dwLevel;
-                pipeGameData.dwPlayer1Lives = game->pipeData.playerData[0].dwLives; pipeGameData.dwPlayer2Lives = game->pipeData.playerData[1].dwLives;
                 pipeGameData.dwPlayer1Points = game->pipeData.playerData[0].dwPoints; pipeGameData.dwPlayer2Points = game->pipeData.playerData[1].dwPoints;
                 pipeGameData.dwX = game->pipeData.playerData[i].obj.dwX; pipeGameData.dwY = game->pipeData.playerData[i].obj.dwY;
                 pipeGameData.dwNEndLevel = game->pipeData.playerData[i].dwNEndLevel;
@@ -131,6 +179,8 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
                     game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
                     game->pipeData.playerData[i].obj.c = FROG;
                     game->pipeData.playerData[i].active = TRUE;
+                    game->pipeData.playerData[i].dwPoints =0;
+
                     ReleaseMutex(game->pipeData.hMutex);
                     game->pipeData.dwNumClients++;
                     _tprintf(_T("[SERVIDOR] Chegou um novo jogador\n"));
@@ -526,9 +576,9 @@ void initPipeData(PIPE_DATA* pipeData) {
         pipeData->playerData[i].overlapRead.hEvent = hEventTemp;
         pipeData->playerData[i].overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         pipeData->hEvents[i] = hEventTemp;
-        pipeData->playerData[i].dwLives = 3;
         pipeData->playerData[i].dwNEndLevel = 0;
         pipeData->playerData[i].dwPoints = 0;    
+        pipeData->playerData[i].dwAFKseg = 0;
         ConnectNamedPipe(pipeData->playerData[i].hPipe, &pipeData->playerData[i].overlapRead);
         ReadFile(pipeData->playerData[i].hPipe, NULL, 0, NULL, &pipeData->playerData[i].overlapRead);
 
@@ -539,7 +589,7 @@ int _tmain(int argc, TCHAR* argv[]) {
     HANDLE hExistServer, hUpdateEvent, hExitEvent,hSendPipeEvent;
     HANDLE hFileMap;
    
-    HANDLE hThread[6];
+    HANDLE hThread[7];
     HANDLE hMutexRoad;
     GAME game;
     HANDLE hdll;
@@ -577,7 +627,8 @@ int _tmain(int argc, TCHAR* argv[]) {
     hThread[3] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)PipeManagerThread, (LPVOID)&game, 0, NULL);
     hThread[4] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)WritePipeThread, (LPVOID)&game, 0, NULL);
     hThread[5] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReceivePipeThread, (LPVOID)&game, 0, NULL);
-    WaitForMultipleObjects(6, hThread, TRUE, INFINITE);
+    hThread[6] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AFKCounter, (LPVOID)&game, 0, NULL);
+    WaitForMultipleObjects(7, hThread, TRUE, INFINITE);
 
     SetEvent(hExitEvent);
     CloseHandle(game.hKey);

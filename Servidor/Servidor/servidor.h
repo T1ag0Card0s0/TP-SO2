@@ -95,7 +95,6 @@ typedef struct PIPE_GAME_DATA {
     SHARED_BOARD sharedBoard;
     DWORD dwLevel;
     DWORD dwPlayer1Points, dwPlayer2Points;
-    DWORD dwPlayer1Lives, dwPlayer2Lives;
     DWORD dwX, dwY;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
 }PIPE_GAME_DATA;
@@ -104,8 +103,9 @@ typedef struct PLAYER_DATA {
     OVERLAPPED overlapRead,overlapWrite;
     BOOL active;
     OBJECT obj;
-    DWORD dwPoints, dwLives;
+    DWORD dwPoints;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
+    DWORD dwAFKseg;// numero de segundos away from keyboard 'afk'
 }PLAYER_DATA;
 typedef struct PIPE_DATA {
     PLAYER_DATA playerData[MAX_PLAYERS];

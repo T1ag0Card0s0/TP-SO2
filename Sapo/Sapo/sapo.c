@@ -54,7 +54,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		pipeData.paintData.XOffset = &XOffset;
 		pipeData.paintData.YOffset = &YOffset;
 		pipeData.pipeGameData.dwLevel = 0;
-		pipeData.pipeGameData.dwPlayer1Lives = 3; pipeData.pipeGameData.dwPlayer2Lives = 3;
 		pipeData.pipeGameData.dwPlayer1Points = 0; pipeData.pipeGameData.dwPlayer2Points = 0;
 		pipeData.pipeGameData.dwX = 0;
 		pipeData.pipeGameData.dwY = 0;
@@ -121,25 +120,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			writee(&pipeData, _T('B'));//B = volta para posicao inicial
 		}
 		ReleaseMutex(pipeData.paintData.hMutex);
-		break;
-	case WM_MOUSEHOVER:
-		dwXMouse = GET_X_LPARAM(lParam);
-		dwYMouse = GET_Y_LPARAM(lParam);
-		if (dwXMouse <pipeData.pipeGameData.dwX * 30 + XOffset + 30 && dwXMouse>pipeData.pipeGameData.dwX * 30 + XOffset &&
-			dwYMouse< pipeData.pipeGameData.dwY * 30 + YOffset + 30 && dwYMouse>pipeData.pipeGameData.dwY * 30 + YOffset
-			) {
-			WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
-			hdc = GetDC(hWnd);
-			GetClientRect(hWnd, &rect);
-			SetTextColor(hdc, RGB(255, 255, 255));
-			SetBkMode(hdc, TRANSPARENT);
-
-			rect.left = pipeData.pipeGameData.dwX*30+XOffset;
-			rect.top = pipeData.pipeGameData.dwY*30+YOffset-15;
-			_stprintf_s(n, _countof(n), _T("%u"), pipeData.pipeGameData.dwNEndLevel);
-			DrawText(hdc, n,_tcslen(n), &rect, DT_SINGLELINE | DT_NOCLIP);
-			ReleaseMutex(pipeData.paintData.hMutex);
-		}
 		break;
 	case WM_SIZE:
 		WaitForSingleObject(hMutex, INFINITE);
@@ -290,8 +270,15 @@ DWORD WINAPI ReadPipeThread(LPVOID param) {
 								}
 							}
 						}
-						_stprintf_s(labelPoints, _countof(labelPoints), _T("Pontuação Jogador 1: %u Jogador 2: %u"), pipeGameData.dwPlayer1Points, pipeGameData.dwPlayer2Points);
-						_stprintf_s(labelLevel, _countof(labelLevel), _T("Nível: %u"), pipeGameData.dwLevel);
+						if (pipeGameData.dwPlayer2Points > 0 && pipeGameData.dwPlayer1Points > 0)
+							_stprintf_s(labelPoints, _countof(labelPoints), _T("Pontuacao Jogador 1: %u Jogador 2: %u"), pipeGameData.dwPlayer1Points, pipeGameData.dwPlayer2Points);
+						else if (pipeGameData.dwPlayer1Points > 0 && pipeGameData.dwPlayer2Points == 0)
+							_stprintf_s(labelPoints, _countof(labelPoints), _T("Pontuacao Jogador 1: %u"), pipeGameData.dwPlayer1Points);
+						else if (pipeGameData.dwPlayer1Points == 0 && pipeGameData.dwPlayer2Points > 0)
+							_stprintf_s(labelPoints, _countof(labelPoints), _T("Pontuacao Jogador 2: %u"), pipeGameData.dwPlayer2Points);
+						else
+							_stprintf_s(labelPoints, _countof(labelPoints), _T("Pontuacao Jogador :"));
+						_stprintf_s(labelLevel, _countof(labelLevel), _T("Nivel: %u"), pipeGameData.dwLevel);
 						SetTextColor(*pipeData->paintData.memDC, RGB(255, 255, 255));
 						SetBkMode(*pipeData->paintData.memDC, TRANSPARENT);
 						rect.left = *pipeData->paintData.XOffset;
