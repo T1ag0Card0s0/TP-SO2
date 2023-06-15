@@ -132,6 +132,14 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if(c == _T('Q')) {
                         game->pipeData.dwNumClients--;
+                        if (i == 0&& game->pipeData.playerData[1].gameType ==MULTI_PLAYER) {
+                            game->pipeData.playerData[1].gameType = NONE;
+                            game->pipeData.playerData[1].bWaiting = TRUE;
+                        }
+                        else if(i==1&&game->pipeData.playerData[0].gameType == MULTI_PLAYER) {
+                            game->pipeData.playerData[0].gameType = NONE;
+                            game->pipeData.playerData[0].bWaiting = TRUE;
+                        }
                         game->pipeData.playerData[i].active = FALSE;
                         DisconnectNamedPipe(game->pipeData.playerData[i].hPipe);
                         CloseHandle(game->pipeData.playerData[i].hPipe);

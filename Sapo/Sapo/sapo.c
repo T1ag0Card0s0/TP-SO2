@@ -369,14 +369,10 @@ void drawText(PIPE_DATA *pipeData,PIPE_GAME_DATA pipeGameData,RECT rect){
 		return;
 	}
 	TCHAR tchar[3], labelPoints[50], labelLevel[50];
-	if (pipeGameData.dwPlayer2Points > 0 && pipeGameData.dwPlayer1Points > 0)
+	if (pipeGameData.gameType==MULTI_PLAYER)
 		_stprintf_s(labelPoints, _countof(labelPoints), _T("Points Player 1: %u Player 2: %u"), pipeGameData.dwPlayer1Points, pipeGameData.dwPlayer2Points);
-	else if (pipeGameData.dwPlayer1Points > 0 && pipeGameData.dwPlayer2Points == 0)
-		_stprintf_s(labelPoints, _countof(labelPoints), _T("Points Player 1: %u"), pipeGameData.dwPlayer1Points);
-	else if (pipeGameData.dwPlayer1Points == 0 && pipeGameData.dwPlayer2Points > 0)
-		_stprintf_s(labelPoints, _countof(labelPoints), _T("Points Player 2: %u"), pipeGameData.dwPlayer2Points);
-	else
-		_stprintf_s(labelPoints, _countof(labelPoints), _T("Points Player :"));
+	else if (pipeGameData.gameType==SINGLE_PLAYER)
+		_stprintf_s(labelPoints, _countof(labelPoints), _T("Points: %u"), pipeGameData.dwPlayer1Points);
 	_stprintf_s(labelLevel, _countof(labelLevel), _T("Level: %u"), pipeGameData.dwLevel);
 	SetTextColor(*pipeData->paintData.memDC, RGB(255, 255, 255));
 	SetBkMode(*pipeData->paintData.memDC, TRANSPARENT);
