@@ -83,11 +83,52 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if (c == _T('1')) {
                         game->pipeData.playerData[i].gameType = SINGLE_PLAYER;
+                        if (i == 0) {
+                            if (game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
+                                game->pipeData.playerData[1].gameType = NONE;
+                                game->pipeData.playerData[1].bWaiting = TRUE;
+                            }
+                            else if (game->pipeData.playerData[1].gameType == SINGLE_PLAYER) {
+                                game->pipeData.playerData[0].gameType = NONE;
+                                game->pipeData.playerData[0].bWaiting = TRUE;
+                            }
+                        }
+                        else if(i == 1) {
+                            if (game->pipeData.playerData[0].gameType == MULTI_PLAYER) {
+                                game->pipeData.playerData[0].gameType = NONE;
+                                game->pipeData.playerData[0].bWaiting = TRUE;
+                            }
+                            else if (game->pipeData.playerData[0].gameType == SINGLE_PLAYER) {
+                                game->pipeData.playerData[1].gameType = NONE;
+                                game->pipeData.playerData[1].bWaiting = TRUE;
+                            }
+                        }
                                                 
                     }
                     else if (c == _T('2')) {     
-                        game->pipeData.playerData[i].gameType = MULTI_PLAYER;
-                                                
+                        if (game->pipeData.playerData[i].gameType != MULTI_PLAYER) {
+                            game->pipeData.playerData[i].gameType = MULTI_PLAYER;
+                            if (game->pipeData.dwNumClients < 2) {
+                                game->pipeData.playerData[i].gameType = NONE;
+                                game->pipeData.playerData[i].bWaiting = TRUE;
+                            }
+                            if (!game->pipeData.playerData[1].bWaiting || !game->pipeData.playerData[0].bWaiting) {
+                                game->pipeData.playerData[i].gameType = NONE;
+                                game->pipeData.playerData[i].bWaiting = TRUE;
+                            }
+                            if (i == 0) {
+                                if (game->pipeData.playerData[1].gameType == SINGLE_PLAYER) {
+                                    game->pipeData.playerData[i].gameType = NONE;
+                                    game->pipeData.playerData[i].bWaiting = TRUE;
+                                }
+                            }
+                            else if (i == 1) {
+                                if (game->pipeData.playerData[0].gameType == SINGLE_PLAYER) {
+                                    game->pipeData.playerData[i].gameType = NONE;
+                                    game->pipeData.playerData[i].bWaiting = TRUE;
+                                }
+                            }
+                        }
                     }
                     else if(c == _T('Q')) {
                         game->pipeData.dwNumClients--;
@@ -122,17 +163,14 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         ConnectNamedPipe(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead);
                         ReadFile(game->pipeData.playerData[i].hPipe, NULL, 0, NULL, &game->pipeData.playerData[i].overlapRead);
                         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
-                        _tprintf(_T("[SERVIDOR]Saiu um jogador\n"));
+                        _tprintf(_T("[SERVIDOR]Saiu o jogador %u\n"), game->pipeData.dwNumClients+1);
                         continue;
                     }
-
-                    if (game->pipeData.dwNumClients < 2&& game->pipeData.playerData[i].gameType == MULTI_PLAYER) {
-                        game->pipeData.playerData[i].gameType = NONE;
-                        game->pipeData.playerData[i].bWaiting = TRUE;
-                    }else if ((i == 0 && game->pipeData.playerData[1].active && game->pipeData.playerData[1].gameType == SINGLE_PLAYER)||
-                              (i == 1 && game->pipeData.playerData[0].active && game->pipeData.playerData[0].gameType == SINGLE_PLAYER)) {
-                                game->pipeData.playerData[i].gameType = NONE;
-                                game->pipeData.playerData[i].bWaiting = TRUE;
+                    if (game->pipeData.dwNumClients >= 2 &&
+                        game->pipeData.playerData[1].bWaiting &&
+                        game->pipeData.playerData[0].bWaiting) {
+                        game->pipeData.playerData[1].bWaiting = FALSE; game->pipeData.playerData[0].bWaiting = FALSE;
+                        game->pipeData.playerData[1].gameType = MULTI_PLAYER; game->pipeData.playerData[0].gameType = MULTI_PLAYER;
                     }
                     moveObject(&game->pipeData.playerData[i].obj, way);
                     if (game->pipeData.playerData[i].obj.dwY == 0) {
@@ -208,7 +246,7 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
 
                     ReleaseMutex(game->pipeData.hMutex);
                     game->pipeData.dwNumClients++;
-                    _tprintf(_T("[SERVIDOR] Chegou um novo jogador\n"));
+                    _tprintf(_T("[SERVIDOR] Chegou o jogador %u\n"), game->pipeData.dwNumClients);
                 }
             }
         }

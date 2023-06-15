@@ -83,9 +83,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 			BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
 		}
 	
-		/*for (int i = 0; i < NUM_BMP_FILES; i++) {
+		for (int i = 0; i < NUM_BMP_FILES; i++) {
 			DeleteObject(hBmp[i]);
-		}*/
+		}
 		ReleaseMutex(hMutex);
 		EndPaint(hWnd, &ps);
 		break;
