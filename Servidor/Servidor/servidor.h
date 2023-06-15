@@ -100,6 +100,7 @@ typedef struct PIPE_GAME_DATA {
     DWORD dwX, dwY;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
     GAME_TYPE gameType;
+    BOOL bWaiting;
 }PIPE_GAME_DATA;
 typedef struct PLAYER_DATA {
     HANDLE hPipe;
@@ -110,6 +111,7 @@ typedef struct PLAYER_DATA {
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
     DWORD dwAFKseg;// numero de segundos away from keyboard 'afk'
     GAME_TYPE gameType;
+    BOOL bWaiting;
 }PLAYER_DATA;
 typedef struct PIPE_DATA {
     PLAYER_DATA playerData[MAX_PLAYERS];

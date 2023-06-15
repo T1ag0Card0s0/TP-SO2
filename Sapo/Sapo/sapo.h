@@ -31,6 +31,7 @@ typedef struct PIPE_GAME_DATA {
     DWORD dwX, dwY;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
     GAME_TYPE gameType;
+    BOOL bWaiting;
 }PIPE_GAME_DATA;
 typedef struct BUTTON {
     TCHAR label[50];

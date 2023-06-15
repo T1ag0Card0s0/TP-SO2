@@ -83,9 +83,11 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if (c == _T('1')) {
                         game->pipeData.playerData[i].gameType = SINGLE_PLAYER;
+                                                
                     }
-                    else if (c == _T('2')) {
+                    else if (c == _T('2')) {     
                         game->pipeData.playerData[i].gameType = MULTI_PLAYER;
+                                                
                     }
                     else if(c == _T('Q')) {
                         game->pipeData.dwNumClients--;
@@ -123,7 +125,15 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         _tprintf(_T("[SERVIDOR]Saiu um jogador\n"));
                         continue;
                     }
-                
+
+                    if (game->pipeData.dwNumClients < 2&& game->pipeData.playerData[i].gameType == MULTI_PLAYER) {
+                        game->pipeData.playerData[i].gameType = NONE;
+                        game->pipeData.playerData[i].bWaiting = TRUE;
+                    }else if ((i == 0 && game->pipeData.playerData[1].active && game->pipeData.playerData[1].gameType == SINGLE_PLAYER)||
+                              (i == 1 && game->pipeData.playerData[0].active && game->pipeData.playerData[0].gameType == SINGLE_PLAYER)) {
+                                game->pipeData.playerData[i].gameType = NONE;
+                                game->pipeData.playerData[i].bWaiting = TRUE;
+                    }
                     moveObject(&game->pipeData.playerData[i].obj, way);
                     if (game->pipeData.playerData[i].obj.dwY == 0) {
                         game->pipeData.playerData[i].dwPoints += 10;
@@ -158,6 +168,7 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                 pipeGameData.dwX = game->pipeData.playerData[i].obj.dwX; pipeGameData.dwY = game->pipeData.playerData[i].obj.dwY;
                 pipeGameData.dwNEndLevel = game->pipeData.playerData[i].dwNEndLevel;
                 pipeGameData.sharedBoard = game->sharedData.memPar->sharedBoard;
+                pipeGameData.bWaiting = game->pipeData.playerData[i].bWaiting;
                 pipeGameData.gameType = game->pipeData.playerData[i].gameType;
                 if (pipeGameData.gameType == SINGLE_PLAYER) {
                     if (i == 0&& game->pipeData.playerData[1].active)
@@ -170,7 +181,6 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                     sizeof(pipeGameData),
                     &n,
                     &game->pipeData.playerData[i].overlapWrite);
-
             }
         }
         ResetEvent(hEvent);
@@ -225,6 +235,11 @@ DWORD WINAPI CMDThread(LPVOID param) {
     COORD pos;
     TCHAR command_line[TAM];
     TCHAR cmd[TAM];
+   HANDLE hEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, EXIT_EVENT);
+    if (hEvent == NULL)
+    {
+        ExitThread(7);
+    }
     getCurrentCursorPosition(&x, &y);
     while (!game->dwShutDown) {
         fflush(stdout); fflush(stdin);
@@ -238,7 +253,7 @@ DWORD WINAPI CMDThread(LPVOID param) {
         _fgetts(command_line, TAM, stdin);
         _stscanf_s(command_line, _T("%s %u"), cmd, TAM, &value);
 
-        if (!_tcscmp(cmd, _T("exit"))) { game->dwShutDown = 1; game->sharedData.terminar = 1; ExitProcess(0); break; }
+        if (!_tcscmp(cmd, _T("exit"))) { game->dwShutDown = 1; game->sharedData.terminar = 1; SetEvent(hEvent); ExitProcess(0); break; }
 
         if (!(_tcscmp(cmd, _T("setf")))) {
             if (value < 1 || value > MAX_ROADS) {
@@ -595,6 +610,7 @@ void initPipeData(PIPE_DATA* pipeData) {
         pipeData->playerData[i].dwPoints = 0;    
         pipeData->playerData[i].dwAFKseg = 0;
         pipeData->playerData[i].gameType = NONE;
+        pipeData->playerData[i].bWaiting = FALSE;
         ConnectNamedPipe(pipeData->playerData[i].hPipe, &pipeData->playerData[i].overlapRead);
         ReadFile(pipeData->playerData[i].hPipe, NULL, 0, NULL, &pipeData->playerData[i].overlapRead);
 

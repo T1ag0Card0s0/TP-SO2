@@ -130,8 +130,19 @@
     <ClCompile Include="sapo.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resource.h" />
     <ClInclude Include="sapo.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="car-left.bmp" />
+    <Image Include="car-right.bmp" />
+    <Image Include="frog-down.bmp" />
+    <Image Include="frog-left.bmp" />
+    <Image Include="frog-right.bmp" />
+    <Image Include="frog-up.bmp" />
+    <Image Include="frog.bmp" />
+    <Image Include="frogger.ico" />
+    <Image Include="passeio.bmp" />
+    <Image Include="wood.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

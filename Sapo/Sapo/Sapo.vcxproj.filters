@@ -23,8 +23,37 @@
     <ClInclude Include="sapo.h">
       <Filter>Arquivos de Cabeçalho</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Arquivos de Cabeçalho</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="car-left.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="car-right.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="frog.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="frog-down.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="frogger.ico">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="frog-left.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="frog-right.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="frog-up.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="passeio.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
+    <Image Include="wood.bmp">
+      <Filter>Arquivos de Recurso</Filter>
+    </Image>
   </ItemGroup>
 </Project>
