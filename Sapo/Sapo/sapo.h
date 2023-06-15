@@ -21,20 +21,29 @@ typedef struct SHARED_BOARD {
     DWORD dwHeight;
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
+typedef enum GAME_TYPE {
+    SINGLE_PLAYER, MULTI_PLAYER, NONE
+}GAME_TYPE;
 typedef struct PIPE_GAME_DATA {
     SHARED_BOARD sharedBoard;
     DWORD dwLevel;
     DWORD dwPlayer1Points, dwPlayer2Points;
     DWORD dwX, dwY;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
+    GAME_TYPE gameType;
 }PIPE_GAME_DATA;
+typedef struct BUTTON {
+    TCHAR label[50];
+    DWORD dwX, dwY;
+    DWORD dwWidth, dwHeight;
+}BUTTON;
 typedef struct PAINT_DATA {
     HDC bmpDC[NUM_BMP_FILES];
     HDC* memDC;
     BITMAP bmp[NUM_BMP_FILES];
     HWND hWnd;
     HANDLE hMutex;
-    
+    BUTTON buttons[2];
     DWORD *XOffset, *YOffset;
 }PAINT_DATA;
 typedef struct PIPE_DATA {
@@ -54,3 +63,4 @@ DWORD WINAPI ReadPipeThread(LPVOID param);
 int writee(PIPE_DATA* pipeData, TCHAR c);
 int CheckNumberOfInstances(HANDLE hSemaphore);
 int initPipeData(PIPE_DATA* pipeData);
+void drawText(PIPE_DATA* pipeData, PIPE_GAME_DATA pipeGameData, RECT rect);

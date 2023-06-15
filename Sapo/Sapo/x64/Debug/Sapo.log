@@ -1,15 +1,18 @@
 ﻿  sapo.c
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(17,8): warning C4101: 'n': variável local não referenciada
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(11,14): warning C4101: 'mmi': variável local não referenciada
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(186,25): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(187,26): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(286,58): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(289,56): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(293,23): warning C4018: '>=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(294,23): warning C4018: '<=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(295,20): warning C4018: '>=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(296,20): warning C4018: '<=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(303,52): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(320,58): warning C4133: 'função': tipos incompatíveis - de 'char [11]' para 'LPCWSTR'
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(409,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(16,8): warning C4101: 'n': variável local não referenciada
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(10,14): warning C4101: 'mmi': variável local não referenciada
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(193,25): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(194,26): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(296,58): warning C4133: 'função': tipos incompatíveis - de 'char [11]' para 'LPCWSTR'
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(341,52): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(344,51): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(352,116): warning C4267: '=': conversão de 'size_t' para 'DWORD', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(357,77): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(363,77): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(370,18): warning C4018: '>=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(371,18): warning C4018: '<=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(372,15): warning C4018: '>=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(373,15): warning C4018: '<=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(380,47): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(429,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
   Sapo.vcxproj -> C:\SO2\TP-SO2\Sapo\x64\Debug\Sapo.exe

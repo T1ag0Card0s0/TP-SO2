@@ -1,0 +1,87 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+IDD_MYDIALOG DIALOGEX 0, 0, 200, 150
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    PUSHBUTTON      "SinglePlayer", IDOK, 40, 40, 120, 25
+    PUSHBUTTON      "MultiPlayer", IDCANCEL, 40, 70, 120, 25
+    PUSHBUTTON      "Sair", 3, 40, 100, 120, 25
+END
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// Português (Portugal) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_PTG)
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "IDD_MYDIALOG DIALOGEX 0, 0, 200, 150\r\n"
+    "STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU\r\n"
+    "FONT 8, ""MS Shell Dlg""\r\n"
+    "BEGIN\r\n"
+    "    PUSHBUTTON      ""SinglePlayer"", IDOK, 40, 40, 120, 25\r\n"
+    "    PUSHBUTTON      ""MultiPlayer"", IDCANCEL, 40, 70, 120, 25\r\n"
+    "    PUSHBUTTON      ""Sair"", 3, 40, 100, 120, 25\r\n"
+    "END\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "\r\n"
+    "IDD_MYDIALOG DIALOGEX 0, 0, 200, 150\r\n"
+    "STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU\r\n"
+    "FONT 8, ""MS Shell Dlg""\r\n"
+    "BEGIN\r\n"
+    "    PUSHBUTTON      ""SinglePlayer"", IDOK, 40, 40, 120, 25\r\n"
+    "    PUSHBUTTON      ""MultiPlayer"", IDCANCEL, 40, 70, 120, 25\r\n"
+    "    PUSHBUTTON      ""Sair"", 3, 40, 100, 120, 25\r\n"
+    "END\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+#endif    // Português (Portugal) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+
+IDD_MYDIALOG DIALOGEX 0, 0, 200, 150
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+FONT 8, "MS Shell Dlg"
+BEGIN
+    PUSHBUTTON      "SinglePlayer", IDOK, 40, 40, 120, 25
+    PUSHBUTTON      "MultiPlayer", IDCANCEL, 40, 70, 120, 25
+    PUSHBUTTON      "Sair", 3, 40, 100, 120, 25
+END
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+

@@ -90,13 +90,16 @@ typedef struct ROAD {
     OBJECT cars[MAX_CARS_PER_ROAD];
     OBJECT objects[MAX_CARS_PER_ROAD];
 }ROAD;
-
+typedef enum GAME_TYPE {
+    SINGLE_PLAYER,MULTI_PLAYER,NONE
+}GAME_TYPE;
 typedef struct PIPE_GAME_DATA {
     SHARED_BOARD sharedBoard;
     DWORD dwLevel;
     DWORD dwPlayer1Points, dwPlayer2Points;
     DWORD dwX, dwY;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
+    GAME_TYPE gameType;
 }PIPE_GAME_DATA;
 typedef struct PLAYER_DATA {
     HANDLE hPipe;
@@ -106,6 +109,7 @@ typedef struct PLAYER_DATA {
     DWORD dwPoints;
     DWORD dwNEndLevel;//numero de vezes que chegou ao fim
     DWORD dwAFKseg;// numero de segundos away from keyboard 'afk'
+    GAME_TYPE gameType;
 }PLAYER_DATA;
 typedef struct PIPE_DATA {
     PLAYER_DATA playerData[MAX_PLAYERS];

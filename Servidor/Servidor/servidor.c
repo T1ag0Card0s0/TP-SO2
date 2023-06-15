@@ -81,6 +81,12 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
                         
                     }
+                    else if (c == _T('1')) {
+                        game->pipeData.playerData[i].gameType = SINGLE_PLAYER;
+                    }
+                    else if (c == _T('2')) {
+                        game->pipeData.playerData[i].gameType = MULTI_PLAYER;
+                    }
                     else if(c == _T('Q')) {
                         game->pipeData.dwNumClients--;
                         game->pipeData.playerData[i].active = FALSE;
@@ -109,10 +115,12 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         game->pipeData.hEvents[i] = hEventTemp;
                         game->pipeData.playerData[i].dwNEndLevel = 0;
                         game->pipeData.playerData[i].dwPoints = 0;
+                        game->pipeData.playerData[i].dwAFKseg = 0;
+                        game->pipeData.playerData[i].gameType = NONE;
                         ConnectNamedPipe(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead);
                         ReadFile(game->pipeData.playerData[i].hPipe, NULL, 0, NULL, &game->pipeData.playerData[i].overlapRead);
                         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
-                        _tprintf(_T("Saiu um jogador\n"));
+                        _tprintf(_T("[SERVIDOR]Saiu um jogador\n"));
                         continue;
                     }
                 
@@ -150,6 +158,13 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                 pipeGameData.dwX = game->pipeData.playerData[i].obj.dwX; pipeGameData.dwY = game->pipeData.playerData[i].obj.dwY;
                 pipeGameData.dwNEndLevel = game->pipeData.playerData[i].dwNEndLevel;
                 pipeGameData.sharedBoard = game->sharedData.memPar->sharedBoard;
+                pipeGameData.gameType = game->pipeData.playerData[i].gameType;
+                if (pipeGameData.gameType == SINGLE_PLAYER) {
+                    if (i == 0&& game->pipeData.playerData[1].active)
+                        pipeGameData.sharedBoard.board[game->pipeData.playerData[1].obj.dwY][game->pipeData.playerData[1].obj.dwX] = _T(' ');
+                    else if (i == 1&& game->pipeData.playerData[0].active)
+                        pipeGameData.sharedBoard.board[game->pipeData.playerData[0].obj.dwY][game->pipeData.playerData[0].obj.dwX] = _T(' ');
+                }
                 WriteFile(game->pipeData.playerData[i].hPipe,
                     &pipeGameData,
                     sizeof(pipeGameData),
@@ -579,6 +594,7 @@ void initPipeData(PIPE_DATA* pipeData) {
         pipeData->playerData[i].dwNEndLevel = 0;
         pipeData->playerData[i].dwPoints = 0;    
         pipeData->playerData[i].dwAFKseg = 0;
+        pipeData->playerData[i].gameType = NONE;
         ConnectNamedPipe(pipeData->playerData[i].hPipe, &pipeData->playerData[i].overlapRead);
         ReadFile(pipeData->playerData[i].hPipe, NULL, 0, NULL, &pipeData->playerData[i].overlapRead);
 
