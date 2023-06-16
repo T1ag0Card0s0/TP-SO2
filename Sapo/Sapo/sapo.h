@@ -67,6 +67,7 @@ typedef struct PIPE_DATA {
 LRESULT CALLBACK TrataEventos(HWND, UINT, WPARAM, LPARAM);
 DWORD WINAPI CheckIfServerExit(LPVOID lpParam);
 DWORD WINAPI ReadPipeThread(LPVOID param);
+void displayError(TCHAR message[], HWND hWnd);
 int writee(PIPE_DATA* pipeData, TCHAR c);
 int CheckNumberOfInstances(HANDLE hSemaphore);
 int initPipeData(PIPE_DATA* pipeData);

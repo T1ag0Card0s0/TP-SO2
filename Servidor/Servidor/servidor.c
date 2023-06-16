@@ -53,7 +53,6 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     if (!runClientRequest(game, c, i)) {
                         disconectClient(game, i);
                         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
-                        restartGame(game);
                         continue;
                     }
                     else {
@@ -82,7 +81,14 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
         for (int i = 0; i < MAX_PLAYERS; i++) {
             if (game->pipeData.playerData[i].active) {
                 pipeGameData.dwLevel = game->dwLevel;
-                pipeGameData.dwPlayer1Points = game->pipeData.playerData[0].dwPoints; pipeGameData.dwPlayer2Points = game->pipeData.playerData[1].dwPoints;
+                if (i == 0) {
+                    pipeGameData.dwPlayer1Points = game->pipeData.playerData[0].dwPoints; 
+                    pipeGameData.dwPlayer2Points = game->pipeData.playerData[1].dwPoints;
+                }
+                else {
+                    pipeGameData.dwPlayer1Points = game->pipeData.playerData[1].dwPoints;
+                    pipeGameData.dwPlayer2Points = game->pipeData.playerData[0].dwPoints;
+                }
                 pipeGameData.dwX = game->pipeData.playerData[i].obj.dwX; pipeGameData.dwY = game->pipeData.playerData[i].obj.dwY;
                 pipeGameData.dwNEndLevel = game->pipeData.playerData[i].dwNEndLevel;
                 pipeGameData.sharedBoard = game->sharedData.memPar->sharedBoard;
@@ -362,6 +368,7 @@ DWORD WINAPI RoadMove(LPVOID param) {
 }
 BOOL runClientRequest(GAME* game, TCHAR c, DWORD i) {
     WAY way = STOP;
+    if (c == _T('Q')) return FALSE;
     if (c == _T('U')) {
         game->pipeData.playerData[i].dwPoints++;
         way = UP;
@@ -399,66 +406,70 @@ BOOL runClientRequest(GAME* game, TCHAR c, DWORD i) {
     }
     else if (c == _T('1')) {
         game->pipeData.playerData[i].gameType = SINGLE_PLAYER;
-        game->pipeData.playerData[i].bWaiting = FALSE;
-        if (i == 0) {
-            if (game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
-                game->pipeData.playerData[1].gameType = NONE;
-                game->pipeData.playerData[1].bWaiting = TRUE;
-            }
-            else if (game->pipeData.playerData[1].gameType == SINGLE_PLAYER) {
-                game->pipeData.playerData[0].gameType = NONE;
-                game->pipeData.playerData[0].bWaiting = TRUE;
-            }
-        }
-        else if (i == 1) {
-            if (game->pipeData.playerData[0].gameType == MULTI_PLAYER) {
-                game->pipeData.playerData[0].gameType = NONE;
-                game->pipeData.playerData[0].bWaiting = TRUE;
-            }
-            else if (game->pipeData.playerData[0].gameType == SINGLE_PLAYER) {
-                game->pipeData.playerData[1].gameType = NONE;
-                game->pipeData.playerData[1].bWaiting = TRUE;
-            }
-        }
-        if (game->pipeData.dwNumClients >= 2) {
+        if (game->pipeData.dwNumClients < 2) {
+            game->pipeData.playerData[i].bWaiting = FALSE;
             restartGame(game);
         }
-
+        else {
+            if (i == 0) {
+                if (game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
+                    game->pipeData.playerData[1].bWaiting = TRUE;
+                    restartGame(game);
+                }
+                else if (game->pipeData.playerData[1].gameType == SINGLE_PLAYER) {
+                    game->pipeData.playerData[0].bWaiting = TRUE;
+                }
+                else if (game->pipeData.playerData[1].gameType == NONE) {
+                    game->pipeData.playerData[1].bWaiting = TRUE;
+                    restartGame(game);
+                }
+            }
+            else if (i == 1) {
+                if (game->pipeData.playerData[0].gameType == MULTI_PLAYER) {
+                    game->pipeData.playerData[0].bWaiting = TRUE;
+                    restartGame(game);
+                }
+                else if (game->pipeData.playerData[0].gameType == SINGLE_PLAYER) {
+                    game->pipeData.playerData[1].bWaiting = TRUE;
+                }
+                else if (game->pipeData.playerData[0].gameType == NONE) {
+                    game->pipeData.playerData[0].bWaiting = TRUE;
+                    restartGame(game);
+                }
+            }
+        }
     }
     else if (c == _T('2')) {
-        if (game->pipeData.playerData[i].gameType != MULTI_PLAYER) {
-            game->pipeData.playerData[i].gameType = MULTI_PLAYER;
-            if (game->pipeData.dwNumClients < 2) {
-                game->pipeData.playerData[i].gameType = NONE;
-                game->pipeData.playerData[i].bWaiting = TRUE;
-            }
-            if (!game->pipeData.playerData[1].bWaiting || !game->pipeData.playerData[0].bWaiting) {
-                game->pipeData.playerData[i].gameType = NONE;
-                game->pipeData.playerData[i].bWaiting = TRUE;
-            }
+        game->pipeData.playerData[i].gameType = MULTI_PLAYER;
+        if (game->pipeData.dwNumClients < 2) {
+            game->pipeData.playerData[i].bWaiting = TRUE;
+        }
+        else {
             if (i == 0) {
                 if (game->pipeData.playerData[1].gameType == SINGLE_PLAYER) {
-                    game->pipeData.playerData[i].gameType = NONE;
-                    game->pipeData.playerData[i].bWaiting = TRUE;
+                    game->pipeData.playerData[0].bWaiting = TRUE;
+                }
+                else if (game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
+                    game->pipeData.playerData[0].bWaiting = FALSE; game->pipeData.playerData[1].bWaiting = FALSE;
+                    restartGame(game);
+                }
+                else if (game->pipeData.playerData[1].gameType == NONE) {
+                    game->pipeData.playerData[0].bWaiting = TRUE;
                 }
             }
             else if (i == 1) {
                 if (game->pipeData.playerData[0].gameType == SINGLE_PLAYER) {
-                    game->pipeData.playerData[i].gameType = NONE;
-                    game->pipeData.playerData[i].bWaiting = TRUE;
+                    game->pipeData.playerData[1].bWaiting = TRUE;
+                }
+                else if (game->pipeData.playerData[0].gameType == MULTI_PLAYER) {
+                    game->pipeData.playerData[0].bWaiting = FALSE; game->pipeData.playerData[1].bWaiting = FALSE;
+                    restartGame(game);
+                }
+                else if (game->pipeData.playerData[0].gameType == NONE) {
+                    game->pipeData.playerData[1].bWaiting = TRUE;
                 }
             }
-            if (game->pipeData.dwNumClients >= 2 &&
-                game->pipeData.playerData[1].bWaiting &&
-                game->pipeData.playerData[0].bWaiting) {
-                game->pipeData.playerData[1].bWaiting = FALSE; game->pipeData.playerData[0].bWaiting = FALSE;
-                game->pipeData.playerData[1].gameType = MULTI_PLAYER; game->pipeData.playerData[0].gameType = MULTI_PLAYER;
-                restartGame(game);
-            }
         }
-    }
-    else if (c == _T('Q')) {
-        return FALSE;
     }
     moveObject(&game->pipeData.playerData[i].obj, way);
     if (game->pipeData.playerData[i].obj.dwY == 0) {
@@ -474,18 +485,16 @@ void disconectClient(GAME* game, DWORD i) {
     WaitForSingleObject(game->pipeData.hMutex, INFINITE);
     game->pipeData.dwNumClients--;
     if (i == 0 && game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
-        game->pipeData.playerData[1].gameType = NONE;
         game->pipeData.playerData[1].bWaiting = TRUE;
     }
     else if (i == 1 && game->pipeData.playerData[0].gameType == MULTI_PLAYER) {
-        game->pipeData.playerData[0].gameType = NONE;
         game->pipeData.playerData[0].bWaiting = TRUE;
     }
     game->pipeData.playerData[i].dwNEndLevel = 0;
     game->pipeData.playerData[i].dwPoints = 0;
     game->pipeData.playerData[i].dwAFKseg = 0;
     game->pipeData.playerData[i].gameType = NONE;
-    game->pipeData.playerData[1].bWaiting = FALSE;
+    game->pipeData.playerData[i].bWaiting = FALSE;
     game->pipeData.playerData[i].active = FALSE;
     DisconnectNamedPipe(game->pipeData.playerData[i].hPipe);
     ConnectNamedPipe(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead);
@@ -493,7 +502,6 @@ void disconectClient(GAME* game, DWORD i) {
     ReleaseMutex(game->pipeData.hMutex);
 }
 void moveObject(OBJECT* objData, WAY way) {
-
     switch (way) {
         case UP: {
             if (objData->dwY <= 0)break;

@@ -37,6 +37,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		pipeData.paintData.hMutex = CreateMutex(NULL, FALSE, NULL);
 
 		hMutex = CreateMutex(NULL, FALSE, NULL);
+		if (hMutex == NULL) {
+			displayError(_T("Erro a criar mutex"), pipeData.paintData.hWnd);
+		}
 		pipeData.paintData.hMutex = hMutex;
 		pipeData.paintData.hWnd = hWnd;
 		for (int i = 0; i < NUM_BMP_FILES; i++) {
@@ -59,9 +62,12 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		if (initPipeData(&pipeData)) DestroyWindow(hWnd);
 		hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ReadPipeThread, (LPVOID)&pipeData, 0, NULL);
 		if (hThread == NULL) {
-			DestroyWindow(hWnd);
+			displayError(_T("Erro a criar thread"), pipeData.paintData.hWnd);
 		}
 		hServer = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CheckIfServerExit,(LPVOID)&pipeData, 0, NULL);
+		if (hServer == NULL) {
+			displayError(_T("Erro a criar thread"), pipeData.paintData.hWnd);
+		}
 		break;
 	}
 	case WM_PAINT: {
@@ -93,7 +99,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		WaitForSingleObject(pipeData.paintData.hMutex, INFINITE);
 		dwXMouse = GET_X_LPARAM(lParam);
 		dwYMouse = GET_Y_LPARAM(lParam);
-		if (pipeData.pipeGameData.gameType != NONE) {
+		if (!pipeData.pipeGameData.bWaiting) {
 			if (dwXMouse<pipeData.pipeGameData.dwX * 30 + XOffset && dwXMouse >(pipeData.pipeGameData.dwX * 30 + XOffset) - 30) {
 				writee(&pipeData, _T('L'));
 			}
@@ -138,7 +144,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	}
 	case WM_KEYUP: {
-		if (pipeData.pipeGameData.gameType == NONE)
+		if (pipeData.pipeGameData.bWaiting)
 			break;
 		switch (wParam) {
 		case VK_UP:
@@ -169,6 +175,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	}
 	case WM_DESTROY: {
 		writee(&pipeData, _T('Q'));
+		Sleep(100);
 		CloseHandle(pipeData.hPipe);
 		ReleaseMutex(pipeData.paintData.hMutex);
 		PostQuitMessage(0);
@@ -235,10 +242,15 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 	DestroyWindow(pipeData->paintData.hWnd);
 	ExitProcess(0);
 }
+void displayError(TCHAR message[], HWND hWnd) {
+	if (IDOK == MessageBox(hWnd, _T("Erro"), message, MB_OK | MB_ICONWARNING)) {
+		DestroyWindow(hWnd);
+	}
+}
 void drawBoard(PIPE_DATA* pipeData, RECT rect ) {
 	PIPE_GAME_DATA pipeGameData = pipeData->pipeGameData;
 	SHARED_BOARD sharedBoard = pipeGameData.sharedBoard;
-	if (pipeGameData.gameType != NONE)
+	if (pipeGameData.gameType!=NONE&&!pipeGameData.bWaiting)
 		for (int i = 0; i < sharedBoard.dwHeight; i++) {
 			for (int j = 0; j < sharedBoard.dwWidth; j++) {
 				if (sharedBoard.board[i][j] == _T('<')) {
@@ -291,16 +303,13 @@ void drawBoard(PIPE_DATA* pipeData, RECT rect ) {
 }
 int CheckNumberOfInstances(HANDLE hSemaphore) {
 	if (hSemaphore == NULL) {
-		_tprintf(_T("Erro ao criar o semáforo. Código do erro: %d\n"), GetLastError());
 		return 0;
 	}
 	DWORD res = WaitForSingleObject(hSemaphore, 0); // tenta obter acesso ao semáforo
 	if (res == WAIT_FAILED) {
-		_tprintf(_T("Erro ao esperar pelo semáforo. Código do erro: %d\n"), GetLastError());
 		return 0;
 	}
 	else if (res == WAIT_TIMEOUT) { // se o semáforo não estiver disponível
-		_tprintf(_T("Já existem 2 instâncias deste programa em execução. Encerrar...\n"));
 		CloseHandle(hSemaphore);
 		return 0;
 	}
@@ -308,7 +317,7 @@ int CheckNumberOfInstances(HANDLE hSemaphore) {
 }
 void drawText(PIPE_DATA *pipeData,RECT rect){
 	PIPE_GAME_DATA pipeGameData = pipeData->pipeGameData;
-	if (pipeGameData.gameType == NONE) {
+	if (pipeGameData.gameType == NONE|| pipeGameData.bWaiting) {
 		SetBkMode(*pipeData->paintData.memDC, OPAQUE);
 		SetBkColor(*pipeData->paintData.memDC, RGB(255, 255, 255));
 		SetTextColor(*pipeData->paintData.memDC, RGB(0, 0, 0));
@@ -387,12 +396,16 @@ void drawText(PIPE_DATA *pipeData,RECT rect){
 int initPipeData(PIPE_DATA* pipeData) {
 	pipeData->hPipe = CreateFile(PIPE_NAME, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
 	if (pipeData->hPipe == INVALID_HANDLE_VALUE) {
+		displayError(_T("Erro a criar pipe"),pipeData->paintData.hWnd);
 		return 1;
 	}
 	ZeroMemory(&pipeData->overlapRead, sizeof(pipeData->overlapRead));
 	ZeroMemory(&pipeData->overlapWrite, sizeof(pipeData->overlapWrite));
 	pipeData->overlapRead.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	pipeData->overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	if(pipeData->overlapRead.hEvent == NULL||
+		pipeData->overlapWrite.hEvent==NULL)
+		displayError(_T("Erro a criar pipe"), pipeData->paintData.hWnd);
 	pipeData->dwShutDown = 0;
 	pipeData->bNewBoard = FALSE;
 	return 0;
@@ -401,6 +414,7 @@ int writee(PIPE_DATA* pipeData, TCHAR c) {
 	DWORD n;
 	WaitForSingleObject(pipeData->paintData.hMutex, INFINITE);
 	if (!WriteFile(pipeData->hPipe, &c, sizeof(c), &n, &pipeData->overlapWrite)) {
+		displayError(_T("Erro a ler pipe"), pipeData->paintData.hWnd);
 		return 1;
 	}
 	if (c != _T('P')) {
