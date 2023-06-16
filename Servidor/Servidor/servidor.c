@@ -44,6 +44,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
         if (i >= 0 && i < MAX_PLAYERS) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &n, FALSE)) {
                 if (n > 0) {
+                    _tprintf(_T("%c\n"), c);
                     game->pipeData.playerData[i].dwAFKseg = 0;
                     WAY way = STOP;
                     if (c == _T('U')) {
@@ -172,6 +173,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         ReadFile(game->pipeData.playerData[i].hPipe, NULL, 0, NULL, &game->pipeData.playerData[i].overlapRead);
                         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
                         _tprintf(_T("[SERVIDOR]Saiu o jogador %u\n"), game->pipeData.dwNumClients+1);
+                        ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
                         continue;
                     }
                     if (game->pipeData.dwNumClients >= 2 &&
@@ -188,9 +190,11 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         changeLevel(game,TRUE);
                     }
                 }
+                WaitForSingleObject(game->pipeData.hMutex, INFINITE);
                 ZeroMemory(&n, sizeof(n));
                 ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
                 ReadFile(game->pipeData.playerData[i].hPipe, &c, sizeof(c), &n, &game->pipeData.playerData[i].overlapRead);
+                ReleaseMutex(game->pipeData.hMutex);
             }
         }
     }
@@ -222,11 +226,13 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                     else if (i == 1&& game->pipeData.playerData[0].active)
                         pipeGameData.sharedBoard.board[game->pipeData.playerData[0].obj.dwY][game->pipeData.playerData[0].obj.dwX] = _T(' ');
                 }
+                WaitForSingleObject(game->pipeData.hMutex, INFINITE);
                 WriteFile(game->pipeData.playerData[i].hPipe,
                     &pipeGameData,
                     sizeof(pipeGameData),
                     &n,
                     &game->pipeData.playerData[i].overlapWrite);
+                ReleaseMutex(game->pipeData.hMutex);
             }
         }
         ResetEvent(hEvent);
