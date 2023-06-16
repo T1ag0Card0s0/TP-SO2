@@ -34,6 +34,11 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
     DWORD ret,i,n,count = 0;
     TCHAR c;
     BOOL sideWalk = FALSE;
+    HANDLE hSendEvent = OpenEvent(EVENT_ALL_ACCESS, FALSE, _T("SendPipeEvent"));
+    if (hSendEvent == NULL) {
+        _tprintf(_T("[ERRO] Abrir evento para envio pelo pipe\n"));
+        ExitThread(-1);
+    }
     for (int i = 0; i < MAX_PLAYERS; i++) {
         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
     }
@@ -46,14 +51,16 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     if (!runClientRequest(game, c, i)) {
                         disconectClient(game, i);
                         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
+                        restartGame(game);
                         continue;
                     }
+                    else {
+                        SetEvent(hSendEvent);
+                    }
                 }
-                WaitForSingleObject(game->pipeData.hMutex, INFINITE);
-                ZeroMemory(&n, sizeof(n));
+                ZeroMemory(&c, sizeof(c));
                 ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
                 ReadFile(game->pipeData.playerData[i].hPipe, &c, sizeof(c), &n, &game->pipeData.playerData[i].overlapRead);
-                ReleaseMutex(game->pipeData.hMutex);
             }
         }
     }
@@ -89,13 +96,11 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                         pipeGameData.sharedBoard.board[game->pipeData.playerData[1].obj.dwY][game->pipeData.playerData[1].obj.dwX] = game->pipeData.playerData[1].obj.c;
                     }
                 }
-                WaitForSingleObject(game->pipeData.hMutex, INFINITE);
                 WriteFile(game->pipeData.playerData[i].hPipe,
                     &pipeGameData,
                     sizeof(pipeGameData),
                     &n,
                     &game->pipeData.playerData[i].overlapWrite);
-                ReleaseMutex(game->pipeData.hMutex);
             }
         }
         ResetEvent(hEvent);
@@ -120,10 +125,13 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
                     game->pipeData.playerData[i].obj.c = FROG;
                     game->pipeData.playerData[i].active = TRUE;
                     game->pipeData.playerData[i].dwPoints =0;
-
+                    game->pipeData.playerData[i].bWaiting = FALSE;
+                    game->pipeData.playerData[i].dwAFKseg = 0;
+                    game->pipeData.playerData[i].dwNEndLevel = 0;
+                    game->pipeData.playerData[i].gameType = NONE;
                     ReleaseMutex(game->pipeData.hMutex);
                     game->pipeData.dwNumClients++;
-                    _tprintf(_T("[SERVIDOR] Chegou o jogador %u\n"), game->pipeData.dwNumClients);
+                    _tprintf(_T("[SERVIDOR] Chegou o jogador %u\n"), i);
                 }
             }
         }
@@ -461,6 +469,7 @@ BOOL runClientRequest(GAME* game, TCHAR c, DWORD i) {
     return TRUE;
 }
 void disconectClient(GAME* game, DWORD i) {
+    WaitForSingleObject(game->pipeData.hMutex, INFINITE);
     game->pipeData.dwNumClients--;
     if (i == 0 && game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
         game->pipeData.playerData[1].gameType = NONE;
@@ -470,38 +479,16 @@ void disconectClient(GAME* game, DWORD i) {
         game->pipeData.playerData[0].gameType = NONE;
         game->pipeData.playerData[0].bWaiting = TRUE;
     }
-    game->pipeData.playerData[i].active = FALSE;
-    DisconnectNamedPipe(game->pipeData.playerData[i].hPipe);
-    CloseHandle(game->pipeData.playerData[i].hPipe);
-    game->pipeData.playerData[i].hPipe = CreateNamedPipe(PIPE_NAME, PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-        PIPE_WAIT | PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE,
-        MAX_PLAYERS,
-        sizeof(TCHAR),
-        sizeof(PIPE_GAME_DATA),
-        NMPWAIT_USE_DEFAULT_WAIT,
-        NULL);
-    if (game->pipeData.playerData[i].hPipe == INVALID_HANDLE_VALUE) {
-        _tprintf(_T("[ERRO] Criar pipe para o jogador %d\n"), i);
-        return;
-    }
-    HANDLE hEventTemp = CreateEvent(NULL, TRUE, FALSE, NULL);
-    if (hEventTemp == NULL) {
-        _tprintf(_T("[ERRO] Criar evento para o jogador %d\n"), i);
-        return;
-    }
-    ZeroMemory(&game->pipeData.playerData[i].overlapRead, sizeof(game->pipeData.playerData[i].overlapRead));
-    ZeroMemory(&game->pipeData.playerData[i].overlapWrite, sizeof(game->pipeData.playerData[i].overlapWrite));
-    game->pipeData.playerData[i].overlapRead.hEvent = hEventTemp;
-    game->pipeData.playerData[i].overlapWrite.hEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-    game->pipeData.hEvents[i] = hEventTemp;
     game->pipeData.playerData[i].dwNEndLevel = 0;
     game->pipeData.playerData[i].dwPoints = 0;
     game->pipeData.playerData[i].dwAFKseg = 0;
     game->pipeData.playerData[i].gameType = NONE;
+    game->pipeData.playerData[1].bWaiting = FALSE;
+    game->pipeData.playerData[i].active = FALSE;
+    DisconnectNamedPipe(game->pipeData.playerData[i].hPipe);
     ConnectNamedPipe(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead);
-    ReadFile(game->pipeData.playerData[i].hPipe, NULL, 0, NULL, &game->pipeData.playerData[i].overlapRead);
-    _tprintf(_T("[SERVIDOR]Saiu o jogador %u\n"), game->pipeData.dwNumClients + 1);
-    ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
+    _tprintf(_T("[SERVIDOR]Saiu o jogador %u\n"), i);
+    ReleaseMutex(game->pipeData.hMutex);
 }
 void moveObject(OBJECT* objData, WAY way) {
 

@@ -31,19 +31,7 @@
     <Image Include="car-right.bmp">
       <Filter>Arquivos de Recurso</Filter>
     </Image>
-    <Image Include="frog.bmp">
-      <Filter>Arquivos de Recurso</Filter>
-    </Image>
-    <Image Include="frog-down.bmp">
-      <Filter>Arquivos de Recurso</Filter>
-    </Image>
     <Image Include="frogger.ico">
-      <Filter>Arquivos de Recurso</Filter>
-    </Image>
-    <Image Include="frog-left.bmp">
-      <Filter>Arquivos de Recurso</Filter>
-    </Image>
-    <Image Include="frog-right.bmp">
       <Filter>Arquivos de Recurso</Filter>
     </Image>
     <Image Include="frog-up.bmp">

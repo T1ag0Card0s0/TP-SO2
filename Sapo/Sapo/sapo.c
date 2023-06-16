@@ -18,12 +18,9 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 	case WM_CREATE: {
 		hBmp[0] = (HBITMAP)LoadImage(NULL, _T("car-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		hBmp[1] = (HBITMAP)LoadImage(NULL, _T("car-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBmp[2] = (HBITMAP)LoadImage(NULL, TEXT("frog-right.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBmp[3] = (HBITMAP)LoadImage(NULL, TEXT("frog-down.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBmp[4] = (HBITMAP)LoadImage(NULL, TEXT("frog-left.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBmp[5] = (HBITMAP)LoadImage(NULL, TEXT("frog-up.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBmp[6] = (HBITMAP)LoadImage(NULL, TEXT("passeio.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-		hBmp[7] = (HBITMAP)LoadImage(NULL, TEXT("wood.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[2] = (HBITMAP)LoadImage(NULL, TEXT("frog-up.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[3] = (HBITMAP)LoadImage(NULL, TEXT("passeio.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+		hBmp[4] = (HBITMAP)LoadImage(NULL, TEXT("wood.bmp"), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 		for (int i = 0; i < NUM_BMP_FILES; i++) {
 			GetObject(hBmp[i], sizeof(bmp[i]), &bmp[i]);
 		}
@@ -140,7 +137,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 
 		break;
 	}
-	case WM_KEYDOWN: {
+	case WM_KEYUP: {
 		if (pipeData.pipeGameData.gameType == NONE)
 			break;
 		switch (wParam) {
@@ -238,7 +235,7 @@ DWORD WINAPI CheckIfServerExit(LPVOID lpParam) {
 	DestroyWindow(pipeData->paintData.hWnd);
 	ExitProcess(0);
 }
-void drawBoard(PIPE_DATA *pipeData,RECT rect) {
+void drawBoard(PIPE_DATA* pipeData, RECT rect ) {
 	PIPE_GAME_DATA pipeGameData = pipeData->pipeGameData;
 	SHARED_BOARD sharedBoard = pipeGameData.sharedBoard;
 	if (pipeGameData.gameType != NONE)
@@ -262,8 +259,7 @@ void drawBoard(PIPE_DATA *pipeData,RECT rect) {
 						pipeData->paintData.bmpDC[1],
 						0, 0, SRCCOPY);
 				}
-				else if (sharedBoard.board[i][j] == _T('F') && pipeGameData.dwX == j && pipeGameData.dwY == i) {
-					if (pipeData->sentido == _T('R')) {
+				else if (sharedBoard.board[i][j] == _T('F')) {
 						BitBlt(*pipeData->paintData.memDC,
 							*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[2].bmWidth,
 							*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[2].bmHeight,
@@ -271,60 +267,23 @@ void drawBoard(PIPE_DATA *pipeData,RECT rect) {
 							pipeData->paintData.bmp[2].bmHeight,
 							pipeData->paintData.bmpDC[2],
 							0, 0, SRCCOPY);
-					}
-					else if (pipeData->sentido == _T('D')) {
-						BitBlt(*pipeData->paintData.memDC,
-							*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[3].bmWidth,
-							*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[3].bmHeight,
-							pipeData->paintData.bmp[3].bmWidth,
-							pipeData->paintData.bmp[3].bmHeight,
-							pipeData->paintData.bmpDC[3],
-							0, 0, SRCCOPY);
-					}
-					else  if (pipeData->sentido == _T('L')) {
-						BitBlt(*pipeData->paintData.memDC,
-							*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[4].bmWidth,
-							*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[4].bmHeight,
-							pipeData->paintData.bmp[4].bmWidth,
-							pipeData->paintData.bmp[4].bmHeight,
-							pipeData->paintData.bmpDC[4],
-							0, 0, SRCCOPY);
-					}
-					else {
-						BitBlt(*pipeData->paintData.memDC,
-							*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[5].bmWidth,
-							*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[5].bmHeight,
-							pipeData->paintData.bmp[5].bmWidth,
-							pipeData->paintData.bmp[5].bmHeight,
-							pipeData->paintData.bmpDC[5],
-							0, 0, SRCCOPY);
-					}
-				}
-				else if (sharedBoard.board[i][j] == _T('F')) {
-					BitBlt(*pipeData->paintData.memDC,
-						*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[5].bmWidth,
-						*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[5].bmHeight,
-						pipeData->paintData.bmp[5].bmWidth,
-						pipeData->paintData.bmp[5].bmHeight,
-						pipeData->paintData.bmpDC[5],
-						0, 0, SRCCOPY);
 				}
 				else if (sharedBoard.board[i][j] == _T('-')) {
 					BitBlt(*pipeData->paintData.memDC,
-						*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[6].bmWidth,
-						*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[6].bmHeight,
-						pipeData->paintData.bmp[6].bmWidth,
-						pipeData->paintData.bmp[6].bmHeight,
-						pipeData->paintData.bmpDC[6],
+						*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[3].bmWidth,
+						*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[3].bmHeight,
+						pipeData->paintData.bmp[3].bmWidth,
+						pipeData->paintData.bmp[3].bmHeight,
+						pipeData->paintData.bmpDC[3],
 						0, 0, SRCCOPY);
 				}
 				else if (sharedBoard.board[i][j] == _T('X')) {
 					BitBlt(*pipeData->paintData.memDC,
-						*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[7].bmWidth,
-						*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[7].bmHeight,
-						pipeData->paintData.bmp[7].bmWidth,
-						pipeData->paintData.bmp[7].bmHeight,
-						pipeData->paintData.bmpDC[7],
+						*pipeData->paintData.XOffset + j * pipeData->paintData.bmp[4].bmWidth,
+						*pipeData->paintData.YOffset + i * pipeData->paintData.bmp[4].bmHeight,
+						pipeData->paintData.bmp[4].bmWidth,
+						pipeData->paintData.bmp[4].bmHeight,
+						pipeData->paintData.bmpDC[4],
 						0, 0, SRCCOPY);
 				}
 			}

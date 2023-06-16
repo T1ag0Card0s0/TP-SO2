@@ -1,20 +1,20 @@
 ﻿  sapo.c
 C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(16,8): warning C4101: 'n': variável local não referenciada
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(245,21): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(246,22): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(358,121): warning C4267: '=': conversão de 'size_t' para 'DWORD', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(363,78): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(369,78): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(375,147): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(387,82): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(388,84): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(396,116): warning C4267: '=': conversão de 'size_t' para 'DWORD', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(401,77): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(407,77): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(414,18): warning C4018: '>=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(415,18): warning C4018: '<=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(416,15): warning C4018: '>=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(417,15): warning C4018: '<=': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(424,47): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(471,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(242,21): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(243,22): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(317,121): warning C4267: '=': conversão de 'size_t' para 'DWORD', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(322,78): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(328,78): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(334,147): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(346,82): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(347,84): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(355,116): warning C4267: '=': conversão de 'size_t' para 'DWORD', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(360,77): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(366,77): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(373,18): warning C4018: '>=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(374,18): warning C4018: '<=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(375,15): warning C4018: '>=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(376,15): warning C4018: '<=': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(383,47): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(430,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
   Sapo.vcxproj -> C:\SO2\TP-SO2\Sapo\x64\Debug\Sapo.exe

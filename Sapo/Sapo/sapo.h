@@ -14,7 +14,7 @@
 #define MAX_CARS_PER_ROAD 8
 #define MAX_PLAYERS 2
 #define PIPE_NAME _T("\\\\.\\pipe\\TP-SO2")
-#define NUM_BMP_FILES 8
+#define NUM_BMP_FILES 5
 //tabuleiro
 typedef struct SHARED_BOARD {
     DWORD dwWidth;

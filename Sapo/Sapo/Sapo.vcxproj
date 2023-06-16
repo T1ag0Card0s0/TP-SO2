@@ -135,11 +135,7 @@
   <ItemGroup>
     <Image Include="car-left.bmp" />
     <Image Include="car-right.bmp" />
-    <Image Include="frog-down.bmp" />
-    <Image Include="frog-left.bmp" />
-    <Image Include="frog-right.bmp" />
     <Image Include="frog-up.bmp" />
-    <Image Include="frog.bmp" />
     <Image Include="frogger.ico" />
     <Image Include="passeio.bmp" />
     <Image Include="wood.bmp" />
