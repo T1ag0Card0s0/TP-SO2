@@ -20,8 +20,10 @@ DWORD WINAPI AFKCounter(LPVOID param) {
                 if (game->pipeData.playerData[i].dwAFKseg >= 10) {
                     game->pipeData.playerData[i].dwAFKseg = 0;
                     game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+                    game->pipeData.playerData[i].dwPoints -= 5;
                 }
-                game->pipeData.playerData[i].dwAFKseg++;
+                if(game->pipeData.playerData[i].obj.dwY!=game->dwInitNumOfRoads+3)
+                    game->pipeData.playerData[i].dwAFKseg++;
             }
         }
         Sleep(1000);
