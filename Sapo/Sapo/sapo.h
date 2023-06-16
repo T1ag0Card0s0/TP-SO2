@@ -64,4 +64,5 @@ DWORD WINAPI ReadPipeThread(LPVOID param);
 int writee(PIPE_DATA* pipeData, TCHAR c);
 int CheckNumberOfInstances(HANDLE hSemaphore);
 int initPipeData(PIPE_DATA* pipeData);
-void drawText(PIPE_DATA* pipeData, PIPE_GAME_DATA pipeGameData, RECT rect);
+void drawText(PIPE_DATA* pipeData, RECT rect);
+void drawBoard(PIPE_DATA* pipeData, RECT rect);
