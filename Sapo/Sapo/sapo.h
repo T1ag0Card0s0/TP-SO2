@@ -15,15 +15,17 @@
 #define MAX_PLAYERS 2
 #define PIPE_NAME _T("\\\\.\\pipe\\TP-SO2")
 #define NUM_BMP_FILES 8
-
+//tabuleiro
 typedef struct SHARED_BOARD {
     DWORD dwWidth;
     DWORD dwHeight;
     TCHAR board[MAX_ROADS + 4][MAX_WIDTH];
 }SHARED_BOARD;
+//tipo de jogo
 typedef enum GAME_TYPE {
     SINGLE_PLAYER, MULTI_PLAYER, NONE
 }GAME_TYPE;
+//dados enviados pelo servidor
 typedef struct PIPE_GAME_DATA {
     SHARED_BOARD sharedBoard;
     DWORD dwLevel;
@@ -33,11 +35,14 @@ typedef struct PIPE_GAME_DATA {
     GAME_TYPE gameType;
     BOOL bWaiting;
 }PIPE_GAME_DATA;
+//os botoes sao textos com o background branco
+//e verifica-se quando o rato é pressionado se este localiza-se por cima de algum dos botoes
 typedef struct BUTTON {
     TCHAR label[50];
     DWORD dwX, dwY;
     DWORD dwWidth, dwHeight;
 }BUTTON;
+//dados para pintar a tela
 typedef struct PAINT_DATA {
     HDC bmpDC[NUM_BMP_FILES];
     HDC* memDC;
@@ -47,6 +52,7 @@ typedef struct PAINT_DATA {
     BUTTON buttons[2];
     DWORD *XOffset, *YOffset;
 }PAINT_DATA;
+//dados para o funcionamento do pipe
 typedef struct PIPE_DATA {
     HANDLE hPipe;
     OVERLAPPED overlapRead, overlapWrite;
