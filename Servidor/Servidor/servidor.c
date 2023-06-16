@@ -44,7 +44,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
         if (i >= 0 && i < MAX_PLAYERS) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &n, FALSE)) {
                 if (n > 0) {
-                    _tprintf(_T("%c\n"), c);
+                    //_tprintf(_T("%c\n"), c);
                     game->pipeData.playerData[i].dwAFKseg = 0;
                     WAY way = STOP;
                     if (c == _T('U')) {
@@ -84,6 +84,7 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                     }
                     else if (c == _T('1')) {
                         game->pipeData.playerData[i].gameType = SINGLE_PLAYER;
+                        game->pipeData.playerData[i].bWaiting = FALSE;
                         if (i == 0) {
                             if (game->pipeData.playerData[1].gameType == MULTI_PLAYER) {
                                 game->pipeData.playerData[1].gameType = NONE;
@@ -103,6 +104,9 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                                 game->pipeData.playerData[1].gameType = NONE;
                                 game->pipeData.playerData[1].bWaiting = TRUE;
                             }
+                        }
+                        if (game->pipeData.dwNumClients >= 2) {
+                            restartGame(game);
                         }
                                                 
                     }
@@ -128,6 +132,13 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                                     game->pipeData.playerData[i].gameType = NONE;
                                     game->pipeData.playerData[i].bWaiting = TRUE;
                                 }
+                            }
+                            if (game->pipeData.dwNumClients >= 2 &&
+                                game->pipeData.playerData[1].bWaiting &&
+                                game->pipeData.playerData[0].bWaiting) {
+                                game->pipeData.playerData[1].bWaiting = FALSE; game->pipeData.playerData[0].bWaiting = FALSE;
+                                game->pipeData.playerData[1].gameType = MULTI_PLAYER; game->pipeData.playerData[0].gameType = MULTI_PLAYER;
+                                restartGame(game);
                             }
                         }
                     }
@@ -176,12 +187,6 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
                         ResetEvent(game->pipeData.playerData[i].overlapRead.hEvent);
                         continue;
                     }
-                    if (game->pipeData.dwNumClients >= 2 &&
-                        game->pipeData.playerData[1].bWaiting &&
-                        game->pipeData.playerData[0].bWaiting) {
-                        game->pipeData.playerData[1].bWaiting = FALSE; game->pipeData.playerData[0].bWaiting = FALSE;
-                        game->pipeData.playerData[1].gameType = MULTI_PLAYER; game->pipeData.playerData[0].gameType = MULTI_PLAYER;
-                    }
                     moveObject(&game->pipeData.playerData[i].obj, way);
                     if (game->pipeData.playerData[i].obj.dwY == 0) {
                         game->pipeData.playerData[i].dwPoints += 10;
@@ -221,10 +226,14 @@ DWORD WINAPI WritePipeThread(LPVOID param) {
                 pipeGameData.bWaiting = game->pipeData.playerData[i].bWaiting;
                 pipeGameData.gameType = game->pipeData.playerData[i].gameType;
                 if (pipeGameData.gameType == SINGLE_PLAYER) {
-                    if (i == 0&& game->pipeData.playerData[1].active)
+                    if (i == 0 && game->pipeData.playerData[1].active) {
                         pipeGameData.sharedBoard.board[game->pipeData.playerData[1].obj.dwY][game->pipeData.playerData[1].obj.dwX] = _T(' ');
-                    else if (i == 1&& game->pipeData.playerData[0].active)
+                        pipeGameData.sharedBoard.board[game->pipeData.playerData[0].obj.dwY][game->pipeData.playerData[0].obj.dwX] = game->pipeData.playerData[0].obj.c;
+                    }
+                    else if (i == 1 && game->pipeData.playerData[0].active) {
                         pipeGameData.sharedBoard.board[game->pipeData.playerData[0].obj.dwY][game->pipeData.playerData[0].obj.dwX] = _T(' ');
+                        pipeGameData.sharedBoard.board[game->pipeData.playerData[1].obj.dwY][game->pipeData.playerData[1].obj.dwX] = game->pipeData.playerData[1].obj.c;
+                    }
                 }
                 WaitForSingleObject(game->pipeData.hMutex, INFINITE);
                 WriteFile(game->pipeData.playerData[i].hPipe,
@@ -339,7 +348,7 @@ DWORD WINAPI CMDThread(LPVOID param) {
             }
         }
         else if (!_tcscmp(cmd, _T("restart"))) {
-            //implementar o comando restart
+            restartGame(game);
         }
         else if (!(_tcscmp(cmd, _T("help")))) {
             _tprintf(_T("\n-- setv x : definir a velocidade dos carros ( x inteiro maior que 1)"));
@@ -407,6 +416,8 @@ DWORD WINAPI UpdateThread(LPVOID param) {
                 PLAYER_DATA playerData = game->pipeData.playerData[i];
                 if (game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] == _T('>') ||
                     game->sharedData.memPar->sharedBoard.board[playerData.obj.dwY][playerData.obj.dwX] == _T('<')) {
+                    if(game->pipeData.playerData[i].dwPoints>10)
+                        game->pipeData.playerData[i].dwPoints -=10;
                     changeLevel(game, FALSE);
                 }
                 else {
@@ -561,6 +572,30 @@ void changeLevel(GAME* game,BOOL bNextLevel) {
         game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads+3;
     }
   
+}
+void restartGame(GAME* game) {
+    game->dwLevel = 1;
+    game->dwInitNumOfRoads = 4;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+        game->pipeData.playerData[i].dwNEndLevel = 0;
+        game->pipeData.playerData[i].dwPoints = 0;
+    }
+    for (int i = 0; i < MAX_ROADS; i++) {
+        game->roads[i].dwNumOfCars = 1;
+        game->roads[i].dwNumOfObjects = 0;
+        game->roads[i].dwSpaceBetween = rand() % (MAX_WIDTH / game->roads[i].dwNumOfCars) + 2;
+        game->roads[i].way = (rand() % 2 == 0 ? RIGHT : LEFT);
+        game->roads[i].dwTimeStoped = 0;
+        game->roads[i].dwSpeed = game->dwInitSpeed * 500;
+        game->roads[i].bChanged = TRUE;
+        for (int j = 0; j < game->roads[i].dwNumOfCars; j++) {
+            game->roads[i].cars[j].c = (game->roads[i].way == RIGHT ? CAR_LEFT : CAR_RIGHT);
+            game->roads[i].cars[j].dwX = (game->roads[i].way == RIGHT ? 0 : MAX_WIDTH);
+            game->roads[i].cars[j].dwY = i + 2;
+
+        }
+    }
 }
 void initRegestry(GAME* data) {
     DWORD estado;

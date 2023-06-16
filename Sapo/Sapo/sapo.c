@@ -54,6 +54,7 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		pipeData.pipeGameData.dwPlayer1Points = 0; pipeData.pipeGameData.dwPlayer2Points = 0;
 		pipeData.pipeGameData.dwX = 0;
 		pipeData.pipeGameData.dwY = 0;
+		pipeData.pipeGameData.gameType = NONE;
 
 		_stprintf_s(pipeData.paintData.buttons[0].label, _countof(pipeData.paintData.buttons[0].label), _T("SinglePlayer"));
 		_stprintf_s(pipeData.paintData.buttons[1].label, _countof(pipeData.paintData.buttons[1].label), _T("MultiPlayer"));
@@ -84,7 +85,6 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		}
 	
 		BitBlt(hdc, 0, 0, rect.right, rect.bottom, memDC, 0, 0, SRCCOPY);
-	
 		ReleaseMutex(hMutex);
 		EndPaint(hWnd, &ps);
 		break;
@@ -141,6 +141,8 @@ LRESULT CALLBACK TrataEventos(HWND hWnd, UINT messg, WPARAM wParam, LPARAM lPara
 		break;
 	}
 	case WM_KEYDOWN: {
+		if (pipeData.pipeGameData.gameType == NONE)
+			break;
 		switch (wParam) {
 		case VK_UP:
 			writee(&pipeData, _T('U'));
