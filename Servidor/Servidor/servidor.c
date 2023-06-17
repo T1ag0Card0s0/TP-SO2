@@ -134,15 +134,6 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
                     // inicializar playerData
                     game->pipeData.dwNumClients++;
                     playerArrived(game, i);
-                   /* game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH + 2;
-                    game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
-                    game->pipeData.playerData[i].obj.c = FROG;
-                    game->pipeData.playerData[i].active = TRUE;
-                    game->pipeData.playerData[i].dwPoints =0;
-                    game->pipeData.playerData[i].bWaiting = FALSE;
-                    game->pipeData.playerData[i].dwAFKseg = 0;
-                    game->pipeData.playerData[i].dwNEndLevel = 0;
-                    game->pipeData.playerData[i].gameType = NONE;*/
                     ReleaseMutex(game->pipeData.hMutex);
                     _tprintf(_T("[SERVIDOR] Chegou o jogador %u\n"), i);
                 }
@@ -622,7 +613,6 @@ void playerArrived(GAME* game, DWORD i) {
     game->pipeData.playerData[i].dwAFKseg = 0;
     game->pipeData.playerData[i].dwNEndLevel = 0;
     game->pipeData.playerData[i].gameType = NONE;
-
 }
 void initRegestry(GAME* data) {
     DWORD estado;
