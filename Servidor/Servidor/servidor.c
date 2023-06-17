@@ -50,6 +50,10 @@ DWORD WINAPI ReceivePipeThread(LPVOID param) {
         if (i >= 0 && i < MAX_PLAYERS) {
             if (GetOverlappedResult(game->pipeData.playerData[i].hPipe, &game->pipeData.playerData[i].overlapRead, &n, FALSE)) {
                 if (n > 0) {
+                    if (!game->pipeData.playerData[i].active) {
+                        game->pipeData.dwNumClients++;
+                        playerArrived(game, i);
+                    }
                     if (!runClientRequest(game, c, i)) {
                         disconectClient(game, i);
                         hEvents[i] = game->pipeData.playerData[i].overlapRead.hEvent;
@@ -128,7 +132,9 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
                 if (nBytes == 0) {
                     WaitForSingleObject(game->pipeData.hMutex, INFINITE);
                     // inicializar playerData
-                    game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH+2;
+                    game->pipeData.dwNumClients++;
+                    playerArrived(game, i);
+                   /* game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH + 2;
                     game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
                     game->pipeData.playerData[i].obj.c = FROG;
                     game->pipeData.playerData[i].active = TRUE;
@@ -136,9 +142,8 @@ DWORD WINAPI PipeManagerThread(LPVOID param) {
                     game->pipeData.playerData[i].bWaiting = FALSE;
                     game->pipeData.playerData[i].dwAFKseg = 0;
                     game->pipeData.playerData[i].dwNEndLevel = 0;
-                    game->pipeData.playerData[i].gameType = NONE;
+                    game->pipeData.playerData[i].gameType = NONE;*/
                     ReleaseMutex(game->pipeData.hMutex);
-                    game->pipeData.dwNumClients++;
                     _tprintf(_T("[SERVIDOR] Chegou o jogador %u\n"), i);
                 }
             }
@@ -606,6 +611,18 @@ void restartGame(GAME* game) {
 
         }
     }
+}
+void playerArrived(GAME* game, DWORD i) {
+    game->pipeData.playerData[i].obj.dwX = rand() % MAX_WIDTH + 2;
+    game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
+    game->pipeData.playerData[i].obj.c = FROG;
+    game->pipeData.playerData[i].active = TRUE;
+    game->pipeData.playerData[i].dwPoints = 0;
+    game->pipeData.playerData[i].bWaiting = FALSE;
+    game->pipeData.playerData[i].dwAFKseg = 0;
+    game->pipeData.playerData[i].dwNEndLevel = 0;
+    game->pipeData.playerData[i].gameType = NONE;
+
 }
 void initRegestry(GAME* data) {
     DWORD estado;

@@ -16,5 +16,5 @@ C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(383,18): warning C4018: '<=': incompatibilidade d
 C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(384,15): warning C4018: '>=': incompatibilidade de signed/unsigned
 C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(385,15): warning C4018: '<=': incompatibilidade de signed/unsigned
 C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(392,47): warning C4267: 'função': conversão de 'size_t' para 'int', possível perda de dados
-C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(444,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
+C:\SO2\TP-SO2\Sapo\Sapo\sapo.c(443,8): warning C4244: 'função': conversão de 'time_t' para 'unsigned int', possível perda de dados
   Sapo.vcxproj -> C:\SO2\TP-SO2\Sapo\x64\Debug\Sapo.exe

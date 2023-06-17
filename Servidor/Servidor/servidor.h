@@ -145,6 +145,7 @@ void restartGame(GAME* game);//reicinica o jogo todo
 void initRegestry(GAME* data);//inicializa os dados do regedit
 void initRoads(ROAD* roads, DWORD dwInitSpeed);//inicializa as estradas
 void initPipeData(PIPE_DATA* pipeData);//inicializa os dados dos pipes
+void playerArrived(GAME* game, DWORD i);//inicializa os dados para avisar o programa que chegou um jogador
 BOOL runClientRequest(GAME* game, TCHAR c,DWORD i);//corre o pedido do jogador
 void disconectClient(GAME* game, DWORD i);//disconecta cliente
 DWORD WINAPI AFKCounter(LPVOID param);//conta quantos segundos cada jogador ativo está sem pressionar numa tecla

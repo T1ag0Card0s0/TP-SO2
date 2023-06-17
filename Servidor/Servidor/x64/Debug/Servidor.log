@@ -1,26 +1,26 @@
 ﻿  servidor.c
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(181,17): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(181,28): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(252,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(262,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(272,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(273,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(278,35): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(237,11): warning C4101: 'n': variável local não referenciada
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(238,11): warning C4101: 'underSymbol': variável local não referenciada
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(323,65): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(329,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(391,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(398,31): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(545,47): warning C4244: '*=': conversão de 'double' para 'DWORD', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(549,35): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(566,47): warning C4244: '*=': conversão de 'double' para 'DWORD', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(568,47): warning C4244: '*=': conversão de 'double' para 'DWORD', possível perda de dados
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(570,35): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(602,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(612,83): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(614,125): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(668,27): warning C4018: '<': incompatibilidade de signed/unsigned
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(721,12): warning C4101: 'hdll': variável local não referenciada
-C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(716,12): warning C4101: 'hFileMap': variável local não referenciada
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(186,17): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(186,28): warning C4244: '=': conversão de 'DWORD' para 'SHORT', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(257,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(267,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(277,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(278,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(283,35): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(242,11): warning C4101: 'n': variável local não referenciada
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(243,11): warning C4101: 'underSymbol': variável local não referenciada
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(328,65): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(334,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(396,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(403,31): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(550,47): warning C4244: '*=': conversão de 'double' para 'DWORD', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(554,35): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(571,47): warning C4244: '*=': conversão de 'double' para 'DWORD', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(573,47): warning C4244: '*=': conversão de 'double' para 'DWORD', possível perda de dados
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(575,35): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(607,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(629,83): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(631,125): warning C4133: 'função': tipos incompatíveis - de 'HANDLE *' para 'PHKEY'
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(685,27): warning C4018: '<': incompatibilidade de signed/unsigned
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(738,12): warning C4101: 'hdll': variável local não referenciada
+C:\SO2\TP-SO2\Servidor\Servidor\servidor.c(733,12): warning C4101: 'hFileMap': variável local não referenciada
   Servidor.vcxproj -> C:\SO2\TP-SO2\Servidor\x64\Debug\Servidor.exe

@@ -414,7 +414,6 @@ int writee(PIPE_DATA* pipeData, TCHAR c) {
 	DWORD n;
 	WaitForSingleObject(pipeData->paintData.hMutex, INFINITE);
 	if (!WriteFile(pipeData->hPipe, &c, sizeof(c), &n, &pipeData->overlapWrite)) {
-		displayError(_T("Erro a ler pipe"), pipeData->paintData.hWnd);
 		return 1;
 	}
 	if (c != _T('P')) {
