@@ -68,7 +68,10 @@ int _tmain(int argc, TCHAR* argv[])
     _setmode(_fileno(stdout), _O_WTEXT);
 #endif
     srand(time(NULL));
-    if ((dados.hdll = LoadLibrary(_T("..\\..\\DynamicLinkLibrary\\x64\\Debug\\DynamicLinkLibrary.dll"))) == NULL) ExitProcess(-1);
+    if ((dados.hdll = LoadLibrary(_T("DynamicLinkLibrary.dll"))) == NULL) {
+        _tprintf(_T("[ERRO]Carregar dll\n"));
+        ExitProcess(-1);
+    }
 
     //lancamos a thread
     hThreadProdutor = CreateThread(NULL, 0, ThreadProdutor, (LPVOID)&dados, 0, NULL);

@@ -471,6 +471,12 @@ BOOL runClientRequest(GAME* game, TCHAR c, DWORD i) {
             }
         }
     }
+
+    if (game->pipeData.playerData[0].bWaiting && game->pipeData.playerData[1].bWaiting) {
+        game->pipeData.playerData[0].bWaiting = FALSE; game->pipeData.playerData[1].bWaiting = FALSE;
+        game->pipeData.playerData[0].gameType = MULTI_PLAYER; game->pipeData.playerData[1].gameType = MULTI_PLAYER;
+        restartGame(game);
+    }
     moveObject(&game->pipeData.playerData[i].obj, way);
     if (game->pipeData.playerData[i].obj.dwY == 0) {
         game->pipeData.playerData[i].dwPoints += 10;
@@ -726,7 +732,10 @@ int _tmain(int argc, TCHAR* argv[]) {
         _tprintf(_T("[ERRO] Erro a iniciar o programa\n"));
         ExitProcess(1);
     }
-    if ((game.sharedData.hdll = LoadLibrary(_T("..\\..\\DynamicLinkLibrary\\x64\\Debug\\DynamicLinkLibrary.dll"))) == NULL) ExitProcess(-1);
+    if ((game.sharedData.hdll = LoadLibrary(_T("DynamicLinkLibrary.dll"))) == NULL) {
+        _tprintf(_T("[ERRO] Carregar dll\n"));
+        ExitProcess(-1);
+    }
 
     srand((unsigned int)time(NULL));
     game.dwShutDown = 0;
