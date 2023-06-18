@@ -581,7 +581,6 @@ void changeLevel(GAME* game,BOOL bNextLevel) {
 }
 void restartGame(GAME* game) {
     game->dwLevel = 1;
-    game->dwInitNumOfRoads = 4;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         game->pipeData.playerData[i].obj.dwY = game->dwInitNumOfRoads + 3;
         game->pipeData.playerData[i].dwNEndLevel = 0;
