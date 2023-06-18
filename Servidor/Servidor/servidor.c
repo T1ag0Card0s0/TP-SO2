@@ -616,13 +616,15 @@ void playerArrived(GAME* game, DWORD i) {
 }
 void initRegestry(GAME* data) {
     DWORD estado;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, KEY_DIR, 0, KEY_ALL_ACCESS, &(data->hKey)) != ERROR_SUCCESS) {
 
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, KEY_DIR, 0, KEY_ALL_ACCESS, &(data->hKey)) != ERROR_SUCCESS) {
+        _tprintf(_T("AQUI"));
         if (RegCreateKeyEx(HKEY_CURRENT_USER, KEY_DIR, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &(data->hKey), &estado) != ERROR_SUCCESS) {
             _tprintf(TEXT("\n[ERRO]Chave nao foi nem criada nem aberta! ERRO!"));
             ExitProcess(1);
         }
         else {
+            
             _tprintf(_T("\n[AVISO] É necessário definir valores de velocidade e de número de faixas antes de começar!\n"));
             do {
                 _tprintf(_T("Velocidade:"));
@@ -647,14 +649,38 @@ void initRegestry(GAME* data) {
     }
     else {
         DWORD dwSize = sizeof(DWORD);
-        if (RegQueryValueExW(data->hKey, KEY_SPEED, NULL, NULL, (LPBYTE) & (data->dwInitSpeed), &dwSize) != ERROR_SUCCESS) {
-            _tprintf(_T("Não foi possivel obter o valor da velocidade por favor insira um novo\n"));
+        DWORD valueType;
+        if (RegQueryValueExW(data->hKey, KEY_SPEED, NULL, &valueType, (LPBYTE) & (data->dwInitSpeed), &dwSize) != ERROR_SUCCESS) {
+            _tprintf(_T("\n[AVISO] É necessário definir valores de velocidade antes de começar!\n"));
+            do {
+                _tprintf(_T("Velocidade:"));
+                _tscanf_s(_T("%u"), &data->dwInitSpeed);
+            } while (data->dwInitSpeed <= 0);
+
+            if (RegSetValueEx(data->hKey, KEY_SPEED, 0, REG_DWORD, (LPCBYTE)&data->dwInitSpeed, sizeof(DWORD)) != ERROR_SUCCESS)
+                _tprintf(TEXT("\n[AVISO] O atributo nao foi alterado nem criado!\n"));
+            else
+                _tprintf(TEXT("Velocidade = %d\n"), data->dwInitSpeed);
+
         }
-        if (RegQueryValueExW(data->hKey, KEY_ROADS, NULL, NULL, (LPBYTE) & (data->dwInitNumOfRoads), &dwSize) != ERROR_SUCCESS) {
-            _tprintf(_T("Não foi possivel obter o valor das faixas por favor insira um novo\n"));
+        if (RegQueryValueExW(data->hKey, KEY_ROADS, NULL, &valueType, (LPBYTE) & (data->dwInitNumOfRoads), &dwSize) != ERROR_SUCCESS) {
+            _tprintf(_T("\n[AVISO] É necessário definir valores de faixas antes de começar!\n"));
+
+            do {
+                _tprintf(_T("\nNúmero de faixas (MAX 8):"));
+                _tscanf_s(_T("%u"), &data->dwInitNumOfRoads);
+            } while (data->dwInitNumOfRoads > MAX_ROADS || data->dwInitNumOfRoads <= 0);
+
+            if (RegSetValueEx(data->hKey, KEY_ROADS, 0, REG_DWORD, (LPCBYTE)&data->dwInitNumOfRoads, sizeof(DWORD)) != ERROR_SUCCESS)
+                _tprintf(TEXT("\n[AVISO] O atributo nao foi alterado nem criado!\n"));
+            else
+                _tprintf(TEXT("Faixas = %u\n"), data->dwInitNumOfRoads);
+
         }
     }
+
     //limpa consola
+    
     COORD pos = { 0,0 };
     DWORD written;
     for (int i = 0; i < MAX_ROADS; i++) {
@@ -662,6 +688,7 @@ void initRegestry(GAME* data) {
         pos.Y++;
     }
 }
+
 void initRoads(ROAD* roads, DWORD dwInitSpeed) {
     for (int i = 0; i < MAX_ROADS; i++) {
         roads[i].dwNumOfObjects = 0;
